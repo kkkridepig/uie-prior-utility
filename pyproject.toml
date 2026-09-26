@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "uie-prior-utility"
+version = "0.1.0"
+description = "Underwater restoration with counterfactual prior utility and residual flow matching"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+dependencies = []
+
+[project.scripts]
+uie = "uie.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["uie*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

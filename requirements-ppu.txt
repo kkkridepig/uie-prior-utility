@@ -1,0 +1,12 @@
+# Deliberately excludes torch, torchvision, CUDA extensions and Triton.
+# Inherit the system PPU PyTorch with venv --system-site-packages.
+setuptools>=68,<81
+wheel>=0.43,<1
+numpy==1.26.4
+Pillow>=10.0,<12
+PyYAML>=6.0,<7
+scipy>=1.11,<1.16
+scikit-image>=0.22,<0.25
+requests>=2.31,<3
+gdown>=5.2,<6
+pytest>=8,<9

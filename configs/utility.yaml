@@ -1,0 +1,25 @@
+stage: utility
+manifest: data/manifests/UIEB.json
+output: outputs/UIEB/seed42/utility
+init: outputs/UIEB/seed42/flow/best.pt
+device: auto
+precision: fp32
+width: 32
+patch_mode: dense
+sampler: flow
+sigma: 0.05
+size: 256
+batch_size: 4
+grad_accum: 2
+workers: 4
+seed: 42
+steps: 5000
+schedule_steps: 5000
+warmup: 100
+lr: 0.0001
+nfe: 4
+utility_delta: 0.001
+utility_window: 9
+corruptions: [clean, clean, color, shift, missing]
+validate_every: 250
+save_every: 250

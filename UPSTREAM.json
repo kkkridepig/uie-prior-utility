@@ -1,0 +1,15 @@
+{
+  "repository": "https://github.com/chingheng0808/WWE-UIE",
+  "commit": "fd0697558203f9f849800cc13b804116bb3f921c",
+  "retrieved": "2026-09-26",
+  "files": {
+    "uie/vendor/wwe.py": {
+      "upstream": "model.py",
+      "sha256": "ac3e1ff534bc81d0ee5d6779c5ff02ae8bbd725ed0bb7064b3a4e06313f99d57"
+    },
+    "LICENSE": {
+      "upstream": "LICENSE",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    }
+  }
+}

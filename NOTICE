@@ -1,0 +1,14 @@
+UIE Prior Utility
+
+This research implementation includes the unmodified model.py from:
+WWE-UIE: A Wavelet & White Balance Efficient Network for Underwater Image Enhancement
+Ching-Heng Cheng, Jen-Wei Lee, Chia-Ming Lee, Chih-Chung Hsu.
+Official source: https://github.com/chingheng0808/WWE-UIE
+License: Apache License 2.0 (see LICENSE).
+Pinned revision and source SHA-256 are recorded in UPSTREAM.json.
+The vendored file is uie/vendor/wwe.py.
+
+All surrounding training, data, runtime, flow/diffusion, utility, evaluation and test
+code is newly implemented for this project. The new training recipe and metrics
+are not the official WWE-UIE reproduction. Model weights and benchmark images are
+not included. Each dataset remains subject to its original provider's terms.

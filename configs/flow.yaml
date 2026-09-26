@@ -1,0 +1,26 @@
+stage: flow
+manifest: data/manifests/UIEB.json
+output: outputs/UIEB/seed42/flow
+init: outputs/UIEB/seed42/baseline/best.pt
+device: auto
+precision: fp32
+width: 32
+patch_mode: dense
+sampler: flow
+sigma: 0.05
+size: 256
+batch_size: 8
+grad_accum: 1
+workers: 4
+seed: 42
+steps: 20000
+schedule_steps: 20000
+warmup: 200
+lr: 0.0002
+nfe: 4
+prior_dropout: 0.25
+flow_gate: dropout
+terminal_weight: 0.1
+corruptions: [clean, clean, color, shift, missing]
+validate_every: 500
+save_every: 500
