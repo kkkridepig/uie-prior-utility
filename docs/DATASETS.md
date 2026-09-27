@@ -12,6 +12,13 @@
 
 ## 可直接运行的下载命令
 
+先进入实际服务器项目目录并激活已安装的环境。本文所有相对路径均以此为起点：
+
+~~~bash
+cd "/mnt/workspace/vads-vke/vlm/yjl/uie-vla/uie-prior-utility"
+source environments/ppu/bin/activate
+~~~
+
 ~~~bash
 python -m uie download --list
 
@@ -30,14 +37,14 @@ python -m uie download wwe-bundle --output downloads --extract-to data/wwe
 
 Google Drive 失败时：
 
-1. 打开来源页面，在能够访问它的环境下载合法数据，再传到 CPFS。
+1. 打开来源页面，在能够访问它的环境下载合法数据，再上传到 /mnt/workspace/vads-vke/vlm/yjl/uie-vla/uie-prior-utility/downloads/。
 2. 已有 ZIP/TAR 可以导入，无需重新下载。
 3. 若作者更新合法 Google Drive 链接，可用 --url 显式覆盖来源，并自行保存新来源说明。
 
 ~~~bash
-python -m uie extract /mnt/workspace/raw-890.zip --output data/uieb
-python -m uie extract /mnt/workspace/reference-890.zip --output data/uieb
-python -m uie extract /mnt/workspace/UnderWaterDataset.zip --output data/wwe
+python -m uie extract downloads/raw-890.zip --output data/uieb
+python -m uie extract downloads/reference-890.zip --output data/uieb
+python -m uie extract downloads/UnderWaterDataset.zip --output data/wwe
 
 # 仅在确实拿到作者更新后的链接时使用：
 # python -m uie download wwe-bundle --url "作者提供的新链接" --output downloads

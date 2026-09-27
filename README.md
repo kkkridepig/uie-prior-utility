@@ -22,12 +22,16 @@ fd0697558203f9f849800cc13b804116bb3f921c
 
 ## 在 PPU 服务器开始
 
-以下为 Linux Bash 命令。在实际挂载的 CPFS 持久化目录运行；这里以 /mnt/workspace 为例。
+以下为 Linux Bash 命令，使用实际服务器项目目录：
+
+~~~text
+/mnt/workspace/vads-vke/vlm/yjl/uie-vla/uie-prior-utility/
+~~~
+
+代码已经放在该目录时，直接进入目录执行首次环境安装：
 
 ~~~bash
-cd /mnt/workspace
-git clone https://github.com/kkkridepig/uie-prior-utility.git
-cd uie-prior-utility
+cd "/mnt/workspace/vads-vke/vlm/yjl/uie-vla/uie-prior-utility"
 
 # 先退出可能覆盖系统 torch 的旧项目虚拟环境。
 # 若系统解释器不是 python3，请明确设置 UIE_SYSTEM_PYTHON。
@@ -44,16 +48,24 @@ python -m uie smoke --output artifacts/ppu-ddim --device cuda --sampler ddim
 
 安装策略针对提供的历史环境：Python 3.10、系统 PPU PyTorch 2.4.0、torchvision 0.19.0、torch.cuda 兼容接口。脚本创建带 system-site-packages 的虚拟环境，只安装 [requirements-ppu.txt](requirements-ppu.txt) 中的辅助包，并核对安装前后的 torch 路径完全相同。它不会安装 torch、torchvision、Triton、FlashAttention 或 CUDA 扩展。模型使用普通 PyTorch 算子，未启用 torch.compile、fused optimizer 或多卡 DDP。
 
-可以把虚拟环境放到其他 CPFS 位置：
+环境安装完成后，每次打开新的服务器终端，先执行下面两行，再运行本文后续下载、训练、续训和评估命令：
 
 ~~~bash
-UIE_SYSTEM_PYTHON=/usr/bin/python3 \
-UIE_VENV=/mnt/workspace/uie-env \
-bash scripts/bootstrap_ppu.sh
-source /mnt/workspace/uie-env/bin/activate
+cd "/mnt/workspace/vads-vke/vlm/yjl/uie-vla/uie-prior-utility"
+source environments/ppu/bin/activate
 ~~~
 
-上面解释器路径只是示例，应指向能导入系统 PPU torch 的解释器。不要照搬旧项目的 NVIDIA CUDA wheel 安装命令。NumPy 固定为 1.26.4，以避开本地 torch 2.4 与 NumPy 2 的互操作问题。
+所有相对路径均以该项目目录为起点。默认文件位置如下；脚本会自动定位项目根目录，无需把服务器绝对路径写进 Python 源码或 YAML 配置。
+
+| 内容 | 实际服务器位置 |
+|---|---|
+| 虚拟环境 | /mnt/workspace/vads-vke/vlm/yjl/uie-vla/uie-prior-utility/environments/ppu/ |
+| 下载的压缩包 | /mnt/workspace/vads-vke/vlm/yjl/uie-vla/uie-prior-utility/downloads/ |
+| 数据集与划分清单 | /mnt/workspace/vads-vke/vlm/yjl/uie-vla/uie-prior-utility/data/ |
+| 一键 UIEB 训练输出 | /mnt/workspace/vads-vke/vlm/yjl/uie-vla/uie-prior-utility/outputs/UIEB/seed42/flow-dense/ |
+| 冒烟验证输出 | /mnt/workspace/vads-vke/vlm/yjl/uie-vla/uie-prior-utility/artifacts/ |
+
+首次安装时的 python3 应能导入系统 PPU torch；如需其他解释器，通过 UIE_SYSTEM_PYTHON 指定。不要照搬旧项目的 NVIDIA CUDA wheel 安装命令。NumPy 固定为 1.26.4，以避开本地 torch 2.4 与 NumPy 2 的互操作问题。
 
 ## 下载代表性 benchmark
 
@@ -89,10 +101,10 @@ bash scripts/evaluate_suite.sh UIEB 42
 
 **A、B 选择一种划分来源用于同一轮实验。** 两者都写 data/manifests/UIEB.json，已有清单会拒绝覆盖。若要比较两套协议，使用独立工作目录或显式指定不同 manifest 与 output。方案 B 保留作者 test，从作者 train 导出 val/calibration；作者原 val 不参与本项目训练，避免未知上游划分产生混用。官方数据入口、配对结构、UFO 尺寸处理和手动导入方法见 [DATASETS.md](docs/DATASETS.md)。
 
-Google Drive 在部分网络不可访问或会触发配额。实际本地 C60 下载发生连接超时，因此这里只确认来源页面和下载器逻辑，**不承诺当前网络可以下载完整数据包**。可在能访问官方页面的机器下载后上传到 CPFS：
+Google Drive 在部分网络不可访问或会触发配额。实际本地 C60 下载发生连接超时，因此这里只确认来源页面和下载器逻辑，**不承诺当前网络可以下载完整数据包**。可在能访问官方页面的机器下载后，把 UnderWaterDataset.zip 上传到项目的 downloads/ 目录，再执行：
 
 ~~~bash
-python -m uie extract /mnt/workspace/UnderWaterDataset.zip --output data/wwe
+python -m uie extract downloads/UnderWaterDataset.zip --output data/wwe
 bash scripts/prepare_wwe.sh
 ~~~
 
