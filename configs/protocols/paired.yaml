@@ -1,0 +1,15 @@
+missing_metrics: null with reason
+name: rgb_float_ssim_valid_v1
+nfe: 1000
+original_thesis_split: false
+resize_hw:
+- 336
+- 336
+sampler: ddpm
+selection: validation mean PSNR; earlier wins ties
+ssim: RGB population covariance; Gaussian 11 sigma1.5 valid border
+test_use: evaluation only
+training_seeds:
+- 20260927
+- 20260928
+- 20260929

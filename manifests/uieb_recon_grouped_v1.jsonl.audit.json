@@ -1,0 +1,15 @@
+{
+  "samples": 890,
+  "splits": {
+    "train": 702,
+    "val": 91,
+    "test": 97
+  },
+  "manifest_sha256": "2f2ade9c77a4022d85f3df870c4ed4c8386f73933be8d087bf444a43e02b12fe",
+  "content_hashes_verified": true,
+  "known_groups_isolated": true,
+  "unknown_scene_ids": 0,
+  "near_duplicate_check": "16x16 gray MSE < 1e-5; heuristic, not proof of scene independence",
+  "near_duplicates": [],
+  "same_split_grouped_duplicate_files": []
+}

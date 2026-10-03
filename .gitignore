@@ -24,3 +24,11 @@ __pycache__/
 htmlcov/
 build/
 dist/
+# MPA-Diff reconstruction run artifacts and separately licensed checkouts
+runs/
+weights/
+third_party/
+!configs/data/
+!configs/data/*.yaml
+!mpa_diff/data/
+!mpa_diff/data/*.py

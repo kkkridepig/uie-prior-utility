@@ -1,0 +1,14 @@
+{
+  "samples": 16,
+  "splits": {
+    "train": 12,
+    "val": 2,
+    "test": 2
+  },
+  "manifest_sha256": "961874a6919e843e187f96da5183dfa0412b548b1fc07494718c169742e14a68",
+  "content_hashes_verified": true,
+  "known_groups_isolated": true,
+  "unknown_scene_ids": 16,
+  "near_duplicate_check": "16x16 gray MSE < 1e-5; heuristic, not proof of scene independence",
+  "near_duplicates": []
+}

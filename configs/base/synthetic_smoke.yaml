@@ -1,0 +1,98 @@
+schema_version: 1
+experiment:
+  name: synthetic_cpu_smoke
+  evidence_profile: synthetic_test_only
+  seed: 20260927
+  parent_checkpoint: null
+data:
+  manifest: manifests/synthetic_fixture.jsonl
+  data_root: data/synthetic_fixture
+  resize_hw:
+  - 32
+  - 32
+  input_color: srgb
+  augmentation: none
+  split_policy: fixed_manifest
+depth:
+  provider: synthetic_fixture
+  encoder: vits
+  checkpoint: null
+  checkpoint_sha256: null
+  source_root: third_party/Depth-Anything-V2
+  frozen: true
+  input_size: 518
+  raw_kind: relative_inverse
+  physics_coordinate: thesis_raw_minmax
+  epsilon: 1.0e-06
+physics:
+  mode: shared_global
+  color_space: srgb_approx
+  background: pil_gaussian_legacy
+  joint_beta_training: true
+histogram:
+  mode: histogan_rgbuv
+  bins: 8
+  bandwidth: 0.02
+  max_input_size: 32
+frequency:
+  shallow_prior: sobel_haar
+  include_low: false
+model:
+  base_channels: 8
+  channel_mult:
+  - 1
+  - 2
+  - 3
+  - 4
+  residual_blocks: 1
+  dropout: 0.0
+diffusion:
+  representation: rgb01
+  prediction_type: x0
+  train_steps: 20
+  schedule: linear
+  beta_start: 0.0001
+  beta_end: 0.02
+  variance: fixed_small
+loss:
+  pixel: masked_mse
+  perceptual_backbone: vgg19
+  perceptual_weight: 0.0
+  vgg_checkpoint: null
+  vgg_sha256: null
+train:
+  optimizer: adam
+  learning_rate: 0.001
+  betas:
+  - 0.9
+  - 0.999
+  weight_decay: 0.0
+  total_steps: 150
+  decay_start: 100
+  final_learning_rate: 0.0001
+  effective_batch: 4
+  micro_batch: 4
+  gradient_accumulation: 1
+  precision: float32
+  ema: false
+  validation_every: 150
+  checkpoint_every: 75
+sampler:
+  name: ddim
+  steps: 4
+  eta: 0.0
+  clip_intermediate_x0: false
+extensions:
+  A: disabled
+  B: disabled
+  C: disabled
+  D: disabled
+  E: disabled
+  F: disabled
+  G: disabled
+runtime:
+  device: cpu
+  threads: 2
+  output: runs/s0/synthetic_smoke
+  cache_dir: data/cache/mpa
+  test_fixture: true

@@ -1,0 +1,18 @@
+{
+  "samples": 16,
+  "splits": {
+    "train": 12,
+    "val": 2,
+    "test": 2
+  },
+  "manifest_sha256": "f4c7d312ebaca7cc8598a866c765489f4606c2e7f11e4bb8fc9a948ac9f6c3c4",
+  "content_hashes_verified": true,
+  "known_groups_isolated": true,
+  "unknown_scene_ids": 0,
+  "near_duplicate_check": "16x16 gray MSE < 1e-5; heuristic, not proof of scene independence",
+  "near_duplicates": [],
+  "test_fixture": true,
+  "seed": 20260927,
+  "physics_space": "linear_rgb",
+  "depth_truth": "truth/*.npz; not used as deployment conditions"
+}

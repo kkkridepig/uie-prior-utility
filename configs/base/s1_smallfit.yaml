@@ -1,0 +1,98 @@
+schema_version: 1
+experiment:
+  name: s1_real_prior_smallfit
+  evidence_profile: engineering_smallfit_not_benchmark
+  seed: 20260927
+  parent_checkpoint: null
+data:
+  manifest: manifests/s1_author_examples.jsonl
+  data_root: data/s1_author_examples
+  resize_hw:
+  - 64
+  - 64
+  input_color: srgb
+  augmentation: none
+  split_policy: fixed_manifest
+depth:
+  provider: depth_anything_v2
+  encoder: vits
+  checkpoint: weights/depth_anything_v2_vits.pth
+  checkpoint_sha256: 715fade13be8f229f8a70cc02066f656f2423a59effd0579197bbf57860e1378
+  source_root: third_party/Depth-Anything-V2
+  frozen: true
+  input_size: 518
+  raw_kind: relative_inverse
+  physics_coordinate: thesis_raw_minmax
+  epsilon: 1.0e-06
+physics:
+  mode: shared_global
+  color_space: srgb_approx
+  background: pil_gaussian_legacy
+  joint_beta_training: true
+histogram:
+  mode: histogan_rgbuv
+  bins: 64
+  bandwidth: 0.02
+  max_input_size: 150
+frequency:
+  shallow_prior: sobel_haar
+  include_low: false
+model:
+  base_channels: 32
+  channel_mult:
+  - 1
+  - 2
+  - 3
+  - 4
+  residual_blocks: 1
+  dropout: 0.1
+diffusion:
+  representation: rgb01
+  prediction_type: x0
+  train_steps: 1000
+  schedule: linear
+  beta_start: 1.0e-06
+  beta_end: 0.02
+  variance: fixed_small
+loss:
+  pixel: masked_mse
+  perceptual_backbone: vgg19
+  perceptual_weight: 0.1
+  vgg_checkpoint: weights/vgg19-dcbb9e9d.pth
+  vgg_sha256: dcbb9e9dad569fff7a846263a77324fc34978fea2bfb039c012d710e1776ae44
+train:
+  optimizer: adam
+  learning_rate: 0.0001
+  betas:
+  - 0.9
+  - 0.999
+  weight_decay: 0.0
+  total_steps: 200
+  decay_start: 150
+  final_learning_rate: 1.0e-06
+  effective_batch: 4
+  micro_batch: 1
+  gradient_accumulation: 4
+  precision: float32
+  ema: false
+  validation_every: 200
+  checkpoint_every: 100
+sampler:
+  name: ddim
+  steps: 20
+  eta: 0.0
+  clip_intermediate_x0: false
+extensions:
+  A: disabled
+  B: disabled
+  C: disabled
+  D: disabled
+  E: disabled
+  F: disabled
+  G: disabled
+runtime:
+  device: cuda
+  threads: 2
+  output: runs/s1/real_prior_smallfit
+  cache_dir: data/cache/mpa
+  test_fixture: false

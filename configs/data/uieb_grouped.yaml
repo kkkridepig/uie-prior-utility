@@ -1,0 +1,13 @@
+dataset: UIEB
+data_root: data/uieb
+image_dir: raw-890
+reference_dir: reference-890
+manifest: manifests/uieb_recon_grouped_v1.jsonl
+counts:
+- 702
+- 91
+- 97
+seed: 20260927
+source_url: https://li-chongyi.github.io/proj_benchmark.html
+license: academic only; redistribution forbidden
+groups: manifests/groups/uieb_content_groups_v1.json

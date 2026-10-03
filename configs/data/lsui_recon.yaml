@@ -1,0 +1,13 @@
+dataset: LSUI
+data_root: data/lsui
+image_dir: input
+reference_dir: GT
+manifest: manifests/lsui_recon_3423_429_427_v1.jsonl
+counts:
+- 3423
+- 429
+- 427
+seed: 20260927
+source_url: https://github.com/LintaoPeng/U-shape_Transformer
+license: see author dataset terms; do not infer from code license
+groups: null

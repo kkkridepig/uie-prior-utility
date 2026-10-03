@@ -1,0 +1,8 @@
+# Install only inside .venv with --no-deps; inherit all core vendor packages.
+# Baseline: Python 3.8.10, torch 2.0.0a0+nv2303, torchvision 0.15.1a0, numpy 1.23.5.
+opencv-python-headless==4.8.1.78
+# Already supplied by server: Pillow 9.0.1, PyYAML 6.0, scipy 1.9.3, pytest 7.2.0.
+# Do not run the older project's requirements-ppu.txt/bootstrap for this package.
+
+# Optional upload archive inspection; no core dependencies.
+libarchive-c==5.1
