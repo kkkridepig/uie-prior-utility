@@ -1,0 +1,5 @@
+# 新留出审计
+
+391 张LSUI旧验证图在现有可审计执行日志中无模型训练/开发评分记录，排除S1作者样例、与已知UIEB/LSUI测试的未决dHash关系。完整名单与记录文件哈希见holdout_frozen_candidates.json。
+
+该结论仅限日志与内容筛查覆盖范围；dHash不能证明绝对场景独立，DA/VGG及LPIPS上游暴露仍未知。它是同一LSUI域的新样本确认，不是新数据域。所有分数只能在final_freeze后生成。

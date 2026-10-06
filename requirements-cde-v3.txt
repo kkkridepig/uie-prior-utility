@@ -1,0 +1,2 @@
+# Install into the existing PPU venv with --no-deps; preserve vendor torch/torchvision.
+lpips==0.1.4

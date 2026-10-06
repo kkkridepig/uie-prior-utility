@@ -1,0 +1,1 @@
+CDE V3 scientific-stop review bundle. No weights, images, datasets, or installed dependencies. Full paths and weight SHA256 are in closeout/weights.csv. Raw final freeze is preserved; read FINAL_REPORT.md and CLOSEOUT_REVIEW_20261005.md for seed/LPIPS errata. Source is the frozen working-tree implementation, not only Git HEAD.

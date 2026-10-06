@@ -1,0 +1,16 @@
+protocol: prior_utility_cde_v3_20261004
+method: C_ADD_BANK_SELECT_V3
+parent_sha256: 3f8e7b50834d069d85b4f9b57c964242554aad45f44826ef4fc000491fad4bea
+budget: {device_hours: 72, final_reserved_hours: 12, max_same_identity_retries: 1}
+seeds: {parent_pretrain: 20260927, finetune: [20261004, 20261005, 20261006], eval_noise: [101, 102, 103], label_noise: [17, 29], corruption: 401, scene_split: 20261004}
+noise: {protocol: noise_protocol_v3, generator: CPU_float32_then_device, keys: [seed, sample_id, role, timestep], training_streams: [data, diffusion_t, noise, adapter_init, mode, dropout]}
+training: {updates: 5000, checkpoints: [0, 2000, 5000], batch: 4, micro_batch: 4, size: [336, 336], precision: float32, augmentation: none, optimizer: Adam, betas: [0.9, 0.999], eps: 1.0e-8, weight_decay: 0, adapter_lr: 0.0001, adapter_final_lr: 0.00001, base_lr: 0.00001, base_final_lr: 0.000001, parent_mode: eval_for_adapter, attention_dropout: 0, loss: mse_plus_0.1_vgg19_3_8_17, clip_loss: false}
+attention: {scales: [4, 8], dim: 64, heads: 4, max_tokens: 256, physical_channels: 20, physical_coordinate: inherited, kD_equals_kB: true, histogram: mass_preserving_color_bins, output_bias: false, output_init: zero, null: hard_skip, all: mean_valid_branches}
+selector: {input_dim: 116, lr: 0.001, batch: 32, updates: 2000, utility_loss: MSE, modes: [null, physical, histogram, highfreq, all], main_policy: argmax_no_extra_threshold, calibrated_thresholds: [0, 0.05, 0.10, 0.20], labels: route_fit_only, calibration: route_cal_only}
+sampler: {main: ddim, main_nfe: 20, diagnostic_nfe: [1, 2, 4, 8, 20], ddim_eta: 0, clip_intermediate_x0: false, final_clip: [0, 1], ddpm_subset: 24}
+gates: {oracle_minus_dev_fixed_min: 0.10, oracle_minus_base_min: -0.10, utility_minus_best_fixed: 0.10, utility_minus_CE_strict: 0, utility_minus_shuffle: 0.05, utility_minus_strongest: 0.10, utility_minus_data_matched: 0.10, ssim_drop_max: 0.002, lpips_increase_max: 0.01, corruption_group_drop_max: 0.10, repeat_each_seed_positive: true, repeat_mean_min: 0.10}
+efficiency: {psnr_drop_max: 0.05, ssim_drop_max: 0.002, lpips_increase_max: 0.01, model_speedup_min: 1.5, warmups: 2, batch: 1, timing: [prior, sampling, model_pad_prior_sample_crop_clip, service_io_h2d_save]}
+corruption: {scope: route_only, missing: [physical, histogram, highfreq], depth_shift_right_fraction: [0.02, 0.05], highfreq_noise_training_rms_multiplier: [0.1, 0.3], histogram_replacement_source: route_fit, secondary_scope: all_condition_diagnostic_only}
+d_fallback: {trigger: C_correct_complete_metrics_numerical_failure_only, updates: 5000, branches: [D_SOBEL_STD, D_PHASE_STD, D_SOFTPHASE_STD], adapter: [3, 32, 32], tau: nonDC_median_per_image_channel, tau_floor: 0.000001, rms: adapter_fit_dataset_frozen_per_representation_channel, rms_floor: 0.001, noise_sigma: [0.005, 0.02, 0.05]}
+metrics: {psnr: parent_RGB01_mse_no_floor_formal, label_mse_floor: 1.0e-10, ssim: parent_implementation, lpips: vgg_v0.1_RGB_minus1_plus1, bootstrap: scene_1000_draws, upstream_exposure: unknown_record_separately}
+planned_C_per_seed: [BASE_CONT_V3, C_BANK, C_RGB_CONTROL, C_ALL_ONLY, C_BEST_FIXED, C_WINNER_CE, C_SHUFFLED, C_UTILITY, BASE_CONT_DATA_MATCHED]

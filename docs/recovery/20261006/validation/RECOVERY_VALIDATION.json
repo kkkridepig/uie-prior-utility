@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-06",
+  "recovered_research_python_files": 127,
+  "new_recovery_utility_python_files": 1,
+  "syntax_checked_python_files": 128,
+  "restored_file_hash_mismatches": [],
+  "v3_original_bundle_manifest_entries_verified": 422,
+  "static_local_imports_missing": [],
+  "linux_cpu_cde_tests": {
+    "passed": 28,
+    "failed": 0,
+    "python": "3.8.10",
+    "torch": "2.3.0+cpu",
+    "receipt": "recovery-20261006-linux-cde-tests.xml"
+  },
+  "broader_linux_tests": "collection blocked by preinstalled scipy/numpy incompatibility",
+  "windows_tests": {
+    "passed": 22,
+    "failed": 3,
+    "fcntl_module_unavailable": true,
+    "isolated_retry_access_violation": true,
+    "root_cause_not_established": true
+  },
+  "real_trained_weights_loaded": false,
+  "server_training_executed": false
+}

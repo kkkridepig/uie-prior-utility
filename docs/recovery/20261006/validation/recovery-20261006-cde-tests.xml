@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="1" failures="0" skipped="0" tests="1" time="0.474" timestamp="2026-10-06T17:07:01.559348+08:00" hostname="LAPTOP-FAMLRMQI"><testcase classname="" name="tests.cde_v3.test_inference_budget" time="0.000"><error message="collection failure">ImportError while importing test module 'F:\水下图像增强\uie-prior-utility\tests\cde_v3\test_inference_budget.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+D:\Users\k\AppData\Local\Programs\Python\Python312\Lib\importlib\__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\cde_v3\test_inference_budget.py:5: in &lt;module&gt;
+    from scripts.cde_v3.dispatch import command_identity
+scripts\cde_v3\dispatch.py:5: in &lt;module&gt;
+    import argparse, fcntl, os, signal, subprocess, sys, time
+E   ModuleNotFoundError: No module named 'fcntl'</error></testcase></testsuite></testsuites>

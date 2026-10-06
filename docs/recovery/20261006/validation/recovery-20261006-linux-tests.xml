@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite errors="2" failures="0" hostname="LAPTOP-FAMLRMQI" name="pytest" skipped="0" tests="2" time="0.570" timestamp="2026-10-06T17:12:50.561616"><testcase classname="" file="tests/mpa/test_protocol.py" name="tests.mpa.test_protocol" time="0.000"><error message="collection failure">tests/mpa/test_protocol.py:6: in &lt;module&gt;
+    from mpa_diff.data.synthetic import generate
+mpa_diff/data/synthetic.py:7: in &lt;module&gt;
+    from mpa_diff.data.manifest import FIELDS,audit
+mpa_diff/data/manifest.py:7: in &lt;module&gt;
+    from scipy.spatial import cKDTree
+/usr/lib/python3/dist-packages/scipy/spatial/__init__.py:99: in &lt;module&gt;
+    from .kdtree import *
+/usr/lib/python3/dist-packages/scipy/spatial/kdtree.py:8: in &lt;module&gt;
+    import scipy.sparse
+/usr/lib/python3/dist-packages/scipy/sparse/__init__.py:229: in &lt;module&gt;
+    from .base import *
+/usr/lib/python3/dist-packages/scipy/sparse/base.py:8: in &lt;module&gt;
+    from .sputils import (isdense, isscalarlike, isintlike,
+/usr/lib/python3/dist-packages/scipy/sparse/sputils.py:16: in &lt;module&gt;
+    supported_dtypes = [np.typeDict[x] for x in supported_dtypes]
+/usr/lib/python3/dist-packages/scipy/sparse/sputils.py:16: in &lt;listcomp&gt;
+    supported_dtypes = [np.typeDict[x] for x in supported_dtypes]
+/root/.local/lib/python3.8/site-packages/numpy/__init__.py:320: in __getattr__
+    raise AttributeError(&quot;module {!r} has no attribute &quot;
+E   AttributeError: module &apos;numpy&apos; has no attribute &apos;typeDict&apos;</error></testcase><testcase classname="" file="tests/mpa/test_stress_interventions.py" name="tests.mpa.test_stress_interventions" time="0.000"><error message="collection failure">tests/mpa/test_stress_interventions.py:3: in &lt;module&gt;
+    from scripts.explore_ag.stress import depth_intervention, corrupt_static
+scripts/explore_ag/stress.py:18: in &lt;module&gt;
+    from scripts.explore_ag.evaluate import load_experiment, fixed_rows
+scripts/explore_ag/evaluate.py:13: in &lt;module&gt;
+    from mpa_diff.data.manifest import read_manifest
+mpa_diff/data/manifest.py:7: in &lt;module&gt;
+    from scipy.spatial import cKDTree
+/usr/lib/python3/dist-packages/scipy/spatial/__init__.py:99: in &lt;module&gt;
+    from .kdtree import *
+/usr/lib/python3/dist-packages/scipy/spatial/kdtree.py:8: in &lt;module&gt;
+    import scipy.sparse
+/usr/lib/python3/dist-packages/scipy/sparse/__init__.py:229: in &lt;module&gt;
+    from .base import *
+/usr/lib/python3/dist-packages/scipy/sparse/base.py:8: in &lt;module&gt;
+    from .sputils import (isdense, isscalarlike, isintlike,
+/usr/lib/python3/dist-packages/scipy/sparse/sputils.py:16: in &lt;module&gt;
+    supported_dtypes = [np.typeDict[x] for x in supported_dtypes]
+/usr/lib/python3/dist-packages/scipy/sparse/sputils.py:16: in &lt;listcomp&gt;
+    supported_dtypes = [np.typeDict[x] for x in supported_dtypes]
+/root/.local/lib/python3.8/site-packages/numpy/__init__.py:320: in __getattr__
+    raise AttributeError(&quot;module {!r} has no attribute &quot;
+E   AttributeError: module &apos;numpy&apos; has no attribute &apos;typeDict&apos;</error></testcase></testsuite></testsuites>
