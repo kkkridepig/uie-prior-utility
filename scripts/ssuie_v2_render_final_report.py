@@ -4,6 +4,7 @@ This is report-only: no image access, training, calibration, model selection or
 device allocation. Run after ssuie_v2_finalize_evidence --analysis-only, before
 the final delivery ZIPs are rebuilt.
 """
+import csv
 import json
 import subprocess
 from pathlib import Path
@@ -59,6 +60,9 @@ def main():
     report+='六个原始 `uie_next/data/*.py` 从服务器原件恢复，逐项与旧 `source_snapshot.json` 匹配并纳入 Git；没有猜写替代。全新检出导入通过。厂商 PyTorch/PPU 保持，官方底座 strict=True 加载。最新 CPU 套件 %d 项通过；另有规约原数值两区域反例、真实原4000点模型/AdamW/随机流CPU恢复回执。\n\n'%ntests
     report+='11个方法各2次真实PPU临时更新、完整指标/网格/模拟校准/压力/导出/新进程重载验收通过；16个fit图缓存与实时输出差0；连续4更新与2+新进程2的参数与优化器差0，独立随机流、采样和LR一致。临时五点接口是工程别名，不冒充正式750/1500/2250/3000更新。已修复门控缺 `U_hat` 的错误，缺失预测字段为null并注明原因，真实标签不充当预测。\n\n'
     report+='实际裁剪残差、RGB共享alpha、a/b/c/u/v/U、有符号共享正负网络、字段重算干预、底座/BN冻结、候选冻结、无Y部署、11控制与消融均有对应源码与测试。完整映射见 `IMPLEMENTATION_CONFORMANCE.md`。工程通过所测接口不等于尚未解锁的正式方法已训练或科学假设成立。两次安全工程中断均保留已提交D0批次；未改变D0数学、输入、标签、权重、角色或选择阈值，影响范围与旧源码快照在 `audit_history/`。\n\n'
+    namespace=optional(run/'tests/namespace_closeout_recovery.json')
+    if namespace:
+        report+='收尾兼容修补：官方net为namespace package，旧冻结loader在同进程重复加载时对None的__file__报错。独立 `scripts.ssuie_v2_safe_closeout` 只移除路径已核实的官方namespace缓存项；错误或混合来源namespace仍拒绝。重复严格加载参数逐项完全一致，74个冻结科学源码文件保持原哈希，原上游工作树干净；不需要重生成未受影响的训练/配对指标。访问导出同时保留汇总SHA256身份审计和逐图评分事件，不将前者冒充封存评分。新测试和工程修补回执见tests与audit_history/closeout_namespace_and_access_export。\n\n'
     report+='## 2. 八个非零检查点：是否有局部空间\n\n'
     report+='全量诊断：%s；每角色完成非零检查点数 %s。训练探针为冻结128内容代理组，实际140张；model_val为671对，utility_val为136对。主估计量图像等权，oracle仅开发诊断、读取参考图、不可部署。\n\n'%('完成' if all_eight else '未全部完成',counts)
     report+='LSUI model_val（底座27.5233317253 dB）：\n\n'+checkpoint_table(summaries,'model_val')+'\n'
@@ -98,6 +102,12 @@ def main():
             report+='| %s | %.6f | %.6f | %.6f | %.6f |\n'%(m,r['psnr'],r['ssim'],r['lpips'],r['paired_vs_base']['harm_rate'])
         report+='\nO−J0=%+.6f dB；O−主对照=%+.6f dB，95%%区间[%+.6f,%+.6f]；O−主要消融=%+.6f dB。开发闸门%s，完整判据如下。utility_val已用于选点，区间仍是探索性。\n\n'%(gate['paired']['B0_clip01']['mean_image'],gate['paired'][primary]['mean_image'],*gate['paired'][primary]['ci95'],gate['paired'][ablation]['mean_image'],'通过' if gate['passed'] else '未通过')
         report+='```json\n'+json.dumps(gate['checks'],ensure_ascii=False,indent=2)+'\n```\n\n'
+        report+='主要配对比较（O减对照，图像等权、同一5000次组bootstrap；开发选型后探索性区间）：\n\n'
+        report+='| 对照 | O−对照(dB) | 95%区间 |\n|---|---:|---|\n'
+        for m in ['B0_clip01','B2','B4','G0','G1','G2','F0','R0','O-NI','O-NP','O-NS','O-ND']:
+            p=gate['paired'][m]
+            report+='| %s | %+.8f | [%+.8f, %+.8f] |\n'%(m,p['mean_image'],*p['ci95'])
+        report+='\n主对照身份仍由CAL冻结为B4；其他方法在开发集更高也不能事后改换primary或部署参数。O对简单固定强度及普通门控/误差二阶矩融合的优势并未获得支持，O−O-NP近乎零而主要结构消融O-NS更高，不能将预测效用通路存在写成特殊机制成立。\n\n'
         report+='收敛风险：'+json.dumps(gate['unresolved_optimization'],ensure_ascii=False)+'；不自动延长训练。若有名义质量而消融/强控制不足，仅可说质量信号，不能归因给O特殊机制。所有压力族、同候选oracle regret、覆盖率和缺失效用原因均另存。\n\n'
         if not gate['passed']:
             report+='直接回答：候选具有不可部署的局部空间；本轮O的冻结策略相对J0为%+.6f dB、相对最强校准对照为%+.6f dB。完整开发操作线未通过，**不支持当前O配方的可部署优势或独特机制增量**，不启动封存确认、多种子或更长训练。训练通过与微小点估计不替代这些对照。未触发优化风险规则也不等于已证明收敛。\n\n'%(gate['paired']['B0_clip01']['mean_image'],gate['paired'][primary]['mean_image'])
@@ -137,6 +147,16 @@ def main():
         chosen=optional(run/'checkpoints'/m/'selection.json')
         if chosen:report+='| %s | %d | %d |\n'%(m,chosen['updates'],chosen['selected_step'])
         else:report+='| %s | not_run/未完成 | %s |\n'%(m,state.get('stop_reason') or '见阶段表')
+    jobs_path=run/'metrics/training_job_receipts.csv'
+    if jobs_path.exists():
+        with jobs_path.open(newline='',encoding='utf-8') as f:
+            jobs=list(csv.DictReader(f))
+        report+='\n实际训练日志窗口（不同方法损失定义不同，不按绝对loss横向排名）：\n\n'
+        report+='| 方法 | 源图呈现 | 视图呈现 | 去重源图 | 最后50批loss均值 | 最后50批梯度裁剪比例 |\n|---|---:|---:|---:|---:|---:|\n'
+        for j in jobs:
+            if j['status']=='complete':
+                report+='| %s | %s | %s | %s | %.8g | %.4f |\n'%(j['method'],j['source_presentations'],j['view_presentations'],j['unique_sources'],float(j['loss_last50_mean']),float(j['clip_fraction_last50']))
+        report+='\nO/R0与若干O消融最后窗口有较高梯度裁剪比例，说明固定裁剪阈值经常起作用；这本身不证明实现bug、发散或收敛。未触发预定的最后两次验证增益风险线也不能证明优化已充分完成。B4有不同源图构成/呈现数，数据匹配不等于损失、计算量或去重图数全部相同。未追加训练或调低裁剪来寻找正结果。\n\n'
     report+='\n累计设备耗时 **%.8f小时 / 16小时**，继承V1 %.8f小时（1503.1731119155884秒，原账本hash保存）；不是新开16小时。旧60秒保守估计保留其身份，新设备活动按占用事件计时，包含真实验收、profile、缓存、重试/中断、训练、评估、视觉和测速；CPU分析另记，不能把缺测CPU耗时填0。最终保护取至少3.5小时与profile更高预测，不重复加总；未花满预算不构成追加训练理由。\n\n'%(budget['used_device_seconds']/3600,budget['inherited_device_seconds']/3600)
     report+='V1保留核验：%s，%d个历史文件hash未变。可恢复checkpoint含模型、AdamW、scheduler、CPU/设备/独立随机流及组采样状态；ZIP补入checksum旁文件与旧谱系，恢复时身份必须一致。时延为无缓存全模型、单方法独立进程、20预热/100计时/20输入service，原始记录和峰值显存分开保存，参见timing/deployment.json。\n\n'%('通过' if legacy['all_unchanged'] else '未通过',legacy['n_files'])
     report+='日志粒度限制：每50更新的真实loss窗口、样本数和梯度窗口均保留，但training.jsonl行未附独立墙钟时间戳。阶段设备时间来自实际budget_ledger与累计账本；没有事后猜补逐50批耗时。该日志字段缺项不改变输出、标签或选择，但不能声称已测得逐50批速度曲线。\n\n'
@@ -168,6 +188,8 @@ def main():
         decision='停止当前有限候选/唯一救援配方。分析候选优化与先验响应，不自动延长到20k/50k，不把有限池失败泛化为全部局部效用机制不可能。'
     elif state['scientific_status'].startswith('CONFIRMATION_PASS'):
         decision='可进入另行预算授权的确认研究：完整方法多种子、独立数据、第二底座和同构O_RGB。当前仅单新增模块种子、共享简化底座、历史暴露数据的有限支持，不是论文创新成立。'
+    elif state['scientific_status']=='STOP_CURRENT_RECIPE_NOT_SUPPORTED':
+        decision='停止当前完整配方，不解封177对、不追加更新或种子。局部oracle空间已经得到验证，但O相对J0只有微小点估计，相对固定缩强度/普通门控/二阶矩融合没有稳定优势，且主要机制消融未获支持。目前不值得直接投入多种子或更长训练来确认“已成功机制”。若另立协议，应先分析投影预测与部署alpha的误差、干预pair项为何没有可辨增量及候选训练MSE/PSNR权衡；之后再决定是否需改变学习问题。当前未运行候选续训/LOG矩阵，不能声称延长训练无效；独立数据、多种子和O_RGB仍是未来正候选所需的确认条件。'
     else:
         decision='按当前具体停止/阻塞状态收束，不追加预算、种子或更改阈值。只有完整强对照与机制消融支持后，才值得讨论独立数据与完整方法多种子确认。当前需要分析失败/优化证据的具体原因，见完整闸门与NEXT_DECISION。'
     report+=decision+'\n\n'

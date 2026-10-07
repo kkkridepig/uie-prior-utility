@@ -61,8 +61,10 @@ def main():
         'ranking_method': 'B1_producer', 'uses_reference_for_case_display_only': True,
         'prior_O_ranked_panels_preserved_not_protocol_case_selection': True,
         'impact': 'Case display only; no outputs, labels, quality scores, checkpoints or policies changed.'})
+    # load/verify own their device leases; do not nest the repository-wide lock.
+    d = Diagnostics(s); d.load(); d.verify_reuse()
     with s.device_job('CLOSEOUT_STRONG_CONTROL_VISUAL_'+role, 300, final=True):
-        d = Diagnostics(s); d.load(); d.verify_reuse(); runtime = RegistryRuntime(d, registry)
+        runtime = RegistryRuntime(d, registry)
         if final_freeze is not None:
             d.data.guard.final_freeze = final_freeze
         with torch.no_grad():
