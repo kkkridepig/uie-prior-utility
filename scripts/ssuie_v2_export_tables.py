@@ -110,6 +110,11 @@ def main():
                                      'reason': '完整判据已执行但未通过；失败不等于not_run。'}
     if pairs:
         csv_write(run / 'metrics/O_paired_comparisons.csv', pairs)
+    if (run / 'selection/producer_freeze.json').exists() and not (run / 'selection/rescue_choice.json').exists():
+        for stage in ['ONE_RESCUE', 'RESCUE_MODEL_FREEZE', 'RESCUE_UTILITY_GATE']:
+            if stage not in state['completed']:
+                state['stages'][stage] = {'status': 'not_run',
+                    'reason': '旧非零池已提供合格producer，迁移检查通过；唯一救援条件未触发。'}
     diagnostic_path = run / 'diagnostics/checkpoint_image_metrics.csv'
     if diagnostic_path.exists():
         with diagnostic_path.open(newline='', encoding='utf-8') as f:

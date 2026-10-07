@@ -92,6 +92,12 @@ def main():
         report+='\nO−J0=%+.6f dB；O−主对照=%+.6f dB，95%%区间[%+.6f,%+.6f]；O−主要消融=%+.6f dB。开发闸门%s，完整判据如下。utility_val已用于选点，区间仍是探索性。\n\n'%(gate['paired']['B0_clip01']['mean_image'],gate['paired'][primary]['mean_image'],*gate['paired'][primary]['ci95'],gate['paired'][ablation]['mean_image'],'通过' if gate['passed'] else '未通过')
         report+='```json\n'+json.dumps(gate['checks'],ensure_ascii=False,indent=2)+'\n```\n\n'
         report+='收敛风险：'+json.dumps(gate['unresolved_optimization'],ensure_ascii=False)+'；不自动延长训练。若有名义质量而消融/强控制不足，仅可说质量信号，不能归因给O特殊机制。所有压力族、同候选oracle regret、覆盖率和缺失效用原因均另存。\n\n'
+        if calibration:
+            report+='最终部署策略（只由133对calibration选择，不采用较好的开发提示参数）：\n\n'
+            report+='| 方法 | CAL选定策略 |\n|---|---|\n'
+            for m,r in sorted(calibration['methods'].items()):
+                report+='| %s | `%s` |\n'%(m,json.dumps(r['policy'],ensure_ascii=False,sort_keys=True))
+            report+='\n全部五检查点×预定网格分数见 utility_checkpoint_grid_scores.csv，CAL完整逐图×网格见 calibration_all_strategy_per_image.csv。选中return_base表示没有该方法的可部署增量，不能称为安全收益成立。\n\n'
     else:
         report+='正式O、G/R/F门控、B4和消融未获合法解锁/未完整完成，**可部署O收益与特殊机制增量未检验**。不能把oracle空间、临时两更新工程验收或当前科学停止当作正式O训练失败。已完成的SS-UIE/standalone部署时延另报，不是O加速成绩。\n\n'
     report+='本轮没有在匹配RGB非零producer上正式重训O_RGB，因此即便O通过，也不能单凭本轮声称物理先验不可替代；O-NS同时改变奇性约束与幅度输入，不能分别证明二者独立必要。\n\n'
@@ -114,6 +120,18 @@ def main():
         else:report+='| %s | not_run/未完成 | %s |\n'%(m,state.get('stop_reason') or '见阶段表')
     report+='\n累计设备耗时 **%.8f小时 / 16小时**，继承V1 %.8f小时（1503.1731119155884秒，原账本hash保存）；不是新开16小时。旧60秒保守估计保留其身份，新设备活动按占用事件计时，包含真实验收、profile、缓存、重试/中断、训练、评估、视觉和测速；CPU分析另记，不能把缺测CPU耗时填0。最终保护取至少3.5小时与profile更高预测，不重复加总；未花满预算不构成追加训练理由。\n\n'%(budget['used_device_seconds']/3600,budget['inherited_device_seconds']/3600)
     report+='V1保留核验：%s，%d个历史文件hash未变。可恢复checkpoint含模型、AdamW、scheduler、CPU/设备/独立随机流及组采样状态；ZIP补入checksum旁文件与旧谱系，恢复时身份必须一致。时延为无缓存全模型、单方法独立进程、20预热/100计时/20输入service，原始记录和峰值显存分开保存，参见timing/deployment.json。\n\n'%('通过' if legacy['all_unchanged'] else '未通过',legacy['n_files'])
+    timing=optional(run/'timing/deployment.json')
+    if timing:
+        report+='| 选定部署策略 | 模型p50(ms) | 模型p95(ms) | 服务p50(ms) | 单进程峰值MiB |\n|---|---:|---:|---:|---:|\n'
+        for r in timing['methods']:
+            report+='| %s | %.3f | %.3f | %.3f | %.2f |\n'%(r['method'],r['model']['p50']*1000,r['model']['p95']*1000,r['service']['p50']*1000,r['peak_single_process_allocated_bytes']/1024**2)
+        report+='\n上表执行冻结的部署策略；若return_base，时延是回退J0的捷径，不是完整O机制计算。原isolated worker把尺度JSON读取放在控制器调用内，该CPU/I/O开销包含在所报时延。文件系统为未清空页缓存的暖态；不据此声称部署优化或一般服务加速。\n\n'
+    full=optional(run/'timing/O_full_pipeline.json')
+    if full:
+        report+='完整O流水线另在独立进程执行底座、先验、producer与共享正负控制器，最终仍使用冻结部署策略；尺度只在计时前读一次。模型p50/p95=%.3f/%.3f ms，service p50=%.3f ms，峰值%.2f MiB。即使所选策略return_base，这份成本也包含完整机制，不能与捷径时延混为一谈。\n\n'%(full['model']['p50']*1000,full['model']['p95']*1000,full['service']['p50']*1000,full['peak_single_process_allocated_bytes']/1024**2)
+    inspected=optional(run/'figures/agent_visual_inspection.json')
+    if inspected:
+        report+='面板已实际打开检查的列表与hash见 figures/agent_visual_inspection.json；未列出的图片只完成生成/hash验证，不称逐张人工检查。\n\n'
     report+='## 7. 下一步与交付\n\n'
     if state['scientific_status']=='STOP_PRODUCER_TRANSFER_GATE':
         decision='停止当前配方。model_val选出的唯一producer未通过utility_val预定空间筛选，不换第二名、不做LSUI盲目续训救场。下一轮先研究候选迁移/训练目标与局部修正可学性，并以新协议重新登记数据与对照；当前不值得以O已成功为由启动多种子或更长训练。'
