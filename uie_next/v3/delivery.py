@@ -26,6 +26,18 @@ def summarize_diagnostics(s):
                     if np.isfinite(x).all():vals[col]=float(x.mean())
                 except (ValueError,TypeError):pass
             vals.update(n_images=len(part),n_groups=len({r['group_id'] for r in part}));summary[filename+'|'+key]=vals
+    oracle_comparison=[]
+    for p in (s.run/'diagnostics/parts').glob('*.json'):
+        rec=read(p)
+        for decision in rec['D1']:
+            for oracle in rec['oracles']:
+                oracle_comparison.append({**rec['meta'],'lambda':decision['lambda'],'tau':0,'oracle_space':oracle['space'],
+                    'deployed_psnr':decision['psnr'],'deployed_mse':decision['mse'],
+                    'reference_only_oracle_psnr':oracle['psnr'],'reference_only_oracle_mse':oracle['mse'],
+                    'reference_only_true_b_regularized_psnr':decision['reference_only_true_b_regularized_psnr'],
+                    'mse_gap_to_reference_oracle':decision['mse']-oracle['mse'],
+                    'gap_interpretation':'strict_same_space_regret' if oracle['space']=='pixel' else 'cross_space_gap_not_strict_regret'})
+    csv_write(s.run/'diagnostics/D1_oracle_space_comparison.csv',oracle_comparison)
     d2=readcsv(s.run/'diagnostics/D2_spatial_controls.csv')
     for role in ['utility_fit','utility_val']:
         p=[r for r in d2 if r['role']==role];orig={r['sample_id']:r for r in p if r['variant']=='original'}
@@ -172,6 +184,7 @@ sealed_eval_released=false，177对保持本轮未评分；不称完全独立盲
             q=quality[role+'|'+method]['image_weighted'];text+=f"|{role}|{method}|{q['ssim']:.6f}|{q['lpips']:.6f}|\n"
     text+='\n补充PSNR/SSIM/LPIPS、逐内容组和组等权敏感性见D7_quality_*，没有改变D7选择条件。固定强度来自utility_fit的10001值网格，alpha='+str(read(s.run/'diagnostics/D7_models.json')['full_fit_models']['global']['constants']['alpha_fit_star'])+'；没有采用旧CAL的事后0.2325。\n'
     text+='\n旧O在DEV的空间均值、能量均值和固定置乱对照均没有支持正的位置增量，区间也跨零。七视图的平均方向余弦约0.978–0.999、有效秩均值约2.902；干预U差RMS约0.023–0.106倍旧s_U，提示所测配对变化较弱，但不据此宣称干预不可能有用。D5加权pair梯度范数仅约0.013–0.018，projection约2.41–3.21，decision约0.12–0.39；这是固定两个批次的解释性证据，不是训练充分性结论。\n'
+    text+='\nO-NS旧结果仅作背景，见继承V2 FINAL_REPORT和本轮diagnostics/V2_historical_background.json；它同时改变奇性约束与幅度输入，不当单因素因果消融。\n'
     text+='\n候选空间存在；本轮有限可见统计/ridge可预测性未达线；没有进入新神经训练，因此MOM/DIRECT相对强控制、矩监督/全局上下文/区域机制增量均未检验，不能记成正式训练后的科学失败。单种子、历史暴露数据与内容代理分组不支持独立泛化或原创性结论。未来不能直接用更长训练替代新信息假设。\n'
     s.ctx.text(s.doc/'FINAL_REPORT.md',text);s.ctx.text(s.run/'FINAL_REPORT.md',text)
     nxt=f"# 下一轮决策\n\n状态：{status}；唯一预登记路由：{dec['route']}。\n\n"+('停止本轮受限表示和探针配方，不启动神经控制器、候选续训或更长训练。失败不证明所有网络不可学习；oracle仍只是参考图辅助空间。未来先提出可审计的新信息/目标假设，再申请独立协议；不直接用加训练保证正结果。\n' if stop else '以第二阶段正式对照与闸门结果决定；不得自动追加预算。\n')+'\n封存177未评分；独立备份尚未核验。请优先下载并核验报告、审阅、源码和权重包。\n'
@@ -197,7 +210,7 @@ def package(s):
     # LPIPS learned coefficients are package assets and must be portable as well.
     import lpips
     assets=Path(lpips.__file__).parent/'weights';extra=[p for p in assets.rglob('*') if p.is_file()]
-    payloads={'review':evidence+list(s.doc.rglob('*.md')),'source_protocol':src+evidence,'visuals':[p for p in visuals if p.is_file()],'weights_recovery':weights+[s.run/'recovery_audit.json',s.run/'method_registry.json',OLD/'method_registry.json',OLD/'selection/calibration_selection.json']}
+    payloads={'review':evidence+list(s.doc.rglob('*.md')),'source_protocol':src+evidence,'visuals':[p for p in visuals if p.is_file()],'weights_recovery':weights+[s.run/'recovery_audit.json',s.run/'method_registry.json',s.run/'diagnostics/D7_models.json',s.run/'selection/stage1_policy_freeze.json',OLD/'method_registry.json',OLD/'selection/calibration_selection.json']}
     packages={}
     for name,paths in payloads.items():
         unique={str(p.relative_to(ROOT)):p for p in paths if p.exists()}
