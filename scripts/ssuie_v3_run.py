@@ -8,8 +8,13 @@ from uie_next.v3.ridge_probe import run_probes
 
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('stage',choices=['audit','stage1','ridge','closeout','all']);a=p.parse_args();s=State();torch.set_num_threads(2);torch.backends.cudnn.benchmark=False
+    p=argparse.ArgumentParser();p.add_argument('stage',choices=['audit','stage1','ridge','closeout','all','verify']);a=p.parse_args();s=State();torch.set_num_threads(2);torch.backends.cudnn.benchmark=False
     if a.stage=='audit':s.audit();return
+    if 'D1_D6_DIAGNOSTICS' in s.state['completed']:
+        from uie_next.v3.recovery import verify_completed
+        receipt=verify_completed(s)
+        if a.stage=='verify':write(s.run/'tests/completed_stage_recovery.json',receipt);return
+    elif a.stage=='verify':raise RuntimeError('no completed stage to verify')
     if 'RECOVERY_AUDIT' not in s.state['completed']:raise RuntimeError('audit first')
     if not (s.run/'source_snapshot.json').exists():s.snapshot()
     if a.stage in ['stage1','all']:

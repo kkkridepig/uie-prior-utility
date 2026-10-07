@@ -189,3 +189,13 @@ def test_reference_free_ridge_deploy_signature():
     import inspect
     from uie_next.v3.evaluation import deploy_ridge
     assert list(inspect.signature(deploy_ridge).parameters)==['image','backbone','producer','ridge','kappa']
+
+
+def test_resume_rejects_missing_or_changed_artifact(tmp_path):
+    import hashlib
+    from uie_next.v3.recovery import require_hashes
+    p=tmp_path/'paired.csv';p.write_text('same identity\n');h=hashlib.sha256(p.read_bytes()).hexdigest();require_hashes(tmp_path,{'paired.csv':h})
+    p.write_text('different identity\n')
+    with pytest.raises(ValueError):require_hashes(tmp_path,{'paired.csv':h})
+    p.unlink()
+    with pytest.raises(ValueError):require_hashes(tmp_path,{'paired.csv':h})

@@ -18,3 +18,9 @@ OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 .venv/bin/python -m scripts.ssuie_v3_po
 ```
 
 包CRC/成员SHA命令见RECOVERY_AND_DOWNLOAD；客户端命令明确尚未在用户本地执行。
+
+已执行的完整阶段恢复验收：
+
+```bash
+.venv/bin/python -m scripts.ssuie_v3_run verify
+```
