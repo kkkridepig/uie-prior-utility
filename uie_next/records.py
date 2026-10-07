@@ -4,6 +4,42 @@ import json
 import os
 from pathlib import Path
 import tempfile
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class RunContext:
+    """Explicit output identity; legacy module constants are never reassigned."""
+    root: Path
+    run_id: str
+    protocol_sha256: str
+
+    @property
+    def run(self):
+        return self.root / 'runs' / self.run_id
+
+    @property
+    def doc(self):
+        return self.root / 'docs/experiments' / self.run_id
+
+    def writable(self, path):
+        path = Path(path).resolve()
+        if not any(path == p.resolve() or p.resolve() in path.parents for p in (self.run, self.doc)):
+            raise PermissionError('write outside explicit run context: ' + str(path))
+        return path
+
+    def write(self, path, value):
+        write(self.writable(path), value)
+
+    def jsonl(self, path, rows):
+        jsonl(self.writable(path), rows)
+
+    def text(self, path, content):
+        path = self.writable(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(mode='w', dir=str(path.parent), delete=False, encoding='utf-8') as out:
+            out.write(content); out.flush(); os.fsync(out.fileno()); temporary = out.name
+        os.replace(temporary, str(path))
 
 ROOT = Path(__file__).resolve().parents[1]
 RUN = ROOT / 'runs/ssuie_local_utility_v1_20261007'

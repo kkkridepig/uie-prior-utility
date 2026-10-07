@@ -9,6 +9,9 @@ SECTIONS={'schema_version','experiment','seed','split_seed','bootstrap_seed','bu
 
 def load(path):
     value=yaml.safe_load(Path(path).read_text())
+    if value.get('schema_version') == 2:
+        from .v2.context import load_config
+        return load_config(path)
     if set(value)!=SECTIONS or value['schema_version']!=1:raise ValueError('unsupported/unknown protocol sections')
     guide=GUIDE
     text=guide.read_text();section=text.split('## 18. 可执行配置合同',1)[1]

@@ -18,6 +18,23 @@ ABLATIONS=['O-NI','O-NP','O-NS','O-ND']
 METHODS=CONTROLS+['O']+ABLATIONS
 
 
+def prediction_utility_statistics(prediction, lab):
+    """Absent predicted utility is NA, never replaced with supervision."""
+    actual = lab['U'].flatten()
+    result = {'U_hat_mse': None, 'U_hat_true_correlation': None,
+              'U_hat_status': 'not_provided_by_method',
+              'U_positive_fraction': float((actual > 0).float().mean()),
+              'U_negative_fraction': float((actual < 0).float().mean())}
+    if 'U_hat' in prediction:
+        predicted = prediction['U_hat'].flatten()
+        result.update(U_hat_status='provided_by_method',
+                      U_hat_mse=float((predicted-actual).square().mean()))
+        if float(predicted.std(unbiased=False)) > 0 and float(actual.std(unbiased=False)) > 0:
+            result['U_hat_true_correlation'] = float(((predicted-predicted.mean())*(actual-actual.mean())).mean() /
+                (predicted.std(unbiased=False)*actual.std(unbiased=False)))
+    return result
+
+
 def load_models(e):
     models={}
     for method in ['B1','B3']+ORDER:models[method]=e.selected(method)[0]
@@ -175,13 +192,7 @@ def eval_table(e,role,operation,models,condition='nominal'):
                     item['v_hat_mse_active']=float((p['v_hat'][mask]-lab['v'][mask]).square().mean()) if mask.any() else None
                     item['b_hat_mse']=float((p['b_hat']-lab['b']).square().mean())
                 if method in preds:
-                    p=preds[method];predicted=p['U_hat'].flatten();actual=lab['U'].flatten()
-                    item['U_hat_mse']=float((predicted-actual).square().mean())
-                    if float(predicted.std())>0 and float(actual.std())>0:
-                        item['U_hat_true_correlation']=float(((predicted-predicted.mean())*(actual-actual.mean())).mean()/(predicted.std(unbiased=False)*actual.std(unbiased=False)))
-                    else:item['U_hat_true_correlation']=None
-                    item['U_positive_fraction']=float((actual>0).float().mean())
-                    item['U_negative_fraction']=float((actual<0).float().mean())
+                    item.update(prediction_utility_statistics(preds[method], lab))
                 item['checkpoint_sha256']=e.config['backbone']['checkpoint_sha256'] if method.startswith('B0_') else read(e.run/'checkpoints'/('B1' if method=='B2' else method)/'selection.json')['selected_sha256']
                 item['input_path']=row['input_path'];item['reference_path']=row['reference_path']
                 records.append(item)
