@@ -80,6 +80,13 @@ def main():
     if trade:
         report+='旧B1_4000：同图均值MSE相对变化 %.6f%%；ΔMSE=%+.9g，95%%组配对区间[%+.9g,%+.9g]；平均逐图ΔPSNR=%+.6f dB，区间[%+.6f,%+.6f]。\n\n'%(trade['mean_mse_relative_change']*100,trade['mse']['mean_image'],*trade['mse']['ci95'],trade['psnr']['mean_image'],*trade['psnr']['ci95'])
         report+='这%s预定的“MSE下降至少0.5%%且PSNR下降至少0.02dB”损失权衡数值条件；救援还必须先满足“旧model_val无合格非零producer”。本轮已有合格producer，因此该数值现象不授权额外损失搜索。平均MSE与平均逐图PSNR权重不同；log-MSE与PSNR是线性换算，不是两份独立证据。均值与探针趋势不能证明已经收敛或一定欠训练。\n\n'%('满足' if trade['mean_mse_relative_change']<=-.005 and trade['psnr']['mean_image']<=-.02 else '不满足')
+    probe_rows=[r for r in summaries if r['head']=='B1' and r['role']=='model_fit_probe' and r['training_step']>0]
+    if probe_rows:
+        report+='冻结训练探针（128组、140张）的端点与局部空间：\n\n'
+        report+='| B1更新 | 完整端点−J0(dB) | 32块oracle−J0(dB) | 像素oracle−J0(dB) |\n|---|---:|---:|---:|\n'
+        for r in sorted(probe_rows,key=lambda r:r['training_step']):
+            report+='| %d | %+.6f | %.6f | %.6f |\n'%(r['training_step'],r['endpoint_psnr']-r['baseline_psnr'],r['H32'],r['Hp'])
+        report+='\n完整端点在固定训练探针上也下降，不能只凭验证下降把原因归为过拟合；探针不是全训练集、采样目标与图等权PSNR不同，仍不能据此确诊优化原因。本轮未触发新候选续训/损失对照，对更长候选训练或LOG目标是否有效不提供实验结论。\n\n'
     report+='先验响应使用同一检查点、同一输入的六个字段干预，重新计算t/Q/q与候选输出；S只是候选MAE响应，不是效用或因果有益性。B3未安排先验干预，表内NA不能解释成RGB模型能力为零。颜色/对比度先验是弱代理，不是真实深度。训练探针、残差、a/b/U分布和每步配对比较保留在diagnostics。\n\n'
     report+='候选救援：%s。\n\n'%('未触发：旧model_val已有合格producer；utility_val迁移失败不能再救援或改选。' if rescue is None and producer else json.dumps(rescue,ensure_ascii=False) if rescue else 'not_run：前置资格/预算未解锁，见状态表。')
     report+='## 4. 可部署收益与O机制增量\n\n'
@@ -92,6 +99,8 @@ def main():
         report+='\nO−J0=%+.6f dB；O−主对照=%+.6f dB，95%%区间[%+.6f,%+.6f]；O−主要消融=%+.6f dB。开发闸门%s，完整判据如下。utility_val已用于选点，区间仍是探索性。\n\n'%(gate['paired']['B0_clip01']['mean_image'],gate['paired'][primary]['mean_image'],*gate['paired'][primary]['ci95'],gate['paired'][ablation]['mean_image'],'通过' if gate['passed'] else '未通过')
         report+='```json\n'+json.dumps(gate['checks'],ensure_ascii=False,indent=2)+'\n```\n\n'
         report+='收敛风险：'+json.dumps(gate['unresolved_optimization'],ensure_ascii=False)+'；不自动延长训练。若有名义质量而消融/强控制不足，仅可说质量信号，不能归因给O特殊机制。所有压力族、同候选oracle regret、覆盖率和缺失效用原因均另存。\n\n'
+        if not gate['passed']:
+            report+='直接回答：候选具有不可部署的局部空间；本轮O的冻结策略相对J0为%+.6f dB、相对最强校准对照为%+.6f dB。完整开发操作线未通过，**不支持当前O配方的可部署优势或独特机制增量**，不启动封存确认、多种子或更长训练。训练通过与微小点估计不替代这些对照。未触发优化风险规则也不等于已证明收敛。\n\n'%(gate['paired']['B0_clip01']['mean_image'],gate['paired'][primary]['mean_image'])
         if calibration:
             report+='最终部署策略（只由133对calibration选择，不采用较好的开发提示参数）：\n\n'
             report+='| 方法 | CAL选定策略 |\n|---|---|\n'
