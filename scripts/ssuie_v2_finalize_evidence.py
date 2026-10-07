@@ -123,6 +123,19 @@ def repair_deliveries(run, doc):
                    stdout=subprocess.DEVNULL)
     write(run / 'delivery/git_bundle.json', {'path': str(bundle), 'sha256': sha(bundle),
                                            'bytes': bundle.stat().st_size, 'independent_backup_verified': False})
+    # Official Git history contains the author's public sample datasets. Keep it
+    # as an explicit separate dependency bundle, out of image-free review/source ZIPs.
+    upstream_bundle = ROOT.parent / (RUN_ID + '_upstream_ssuie.bundle')
+    upstream = ROOT / 'third_party/ss_uie'
+    subprocess.run(['git', 'bundle', 'create', str(upstream_bundle), 'HEAD'], cwd=upstream, check=True,
+                   stdout=subprocess.DEVNULL)
+    subprocess.run(['git', 'bundle', 'verify', str(upstream_bundle)], cwd=upstream, check=True,
+                   stdout=subprocess.DEVNULL)
+    write(run / 'delivery/upstream_git_bundle.json', {'path': str(upstream_bundle),
+          'sha256': sha(upstream_bundle), 'bytes': upstream_bundle.stat().st_size,
+          'commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=upstream, text=True).strip(),
+          'strict_loader_requires_original_git_identity': True, 'independent_backup_verified': False,
+          'scope': 'Official public upstream Git history includes author-supplied sample images; no local experiment dataset added. Separate from review/source ZIPs.'})
     tracked = subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).decode().split('\0')
     image_or_weight = {'.png', '.jpg', '.jpeg', '.bmp', '.gif', '.webp', '.pth', '.pt', '.zip', '.pdf'}
     source = [ROOT / p for p in tracked if p and (ROOT / p).is_file() and
@@ -132,7 +145,7 @@ def repair_deliveries(run, doc):
                                 'source_recovery_receipt.json', 'roles.jsonl', 'exposure_ledger.json',
                                 'environment.json']]
     source += [p for p in (run / 'delivery').rglob('*.md')]
-    upstream = ROOT / 'third_party/ss_uie'
+    source += [run / 'delivery/upstream_git_bundle.json']
     source += [p for p in upstream.rglob('*') if p.is_file() and '.git' not in p.parts and
                '__pycache__' not in p.parts and p.suffix.lower() not in image_or_weight]
     source += [p for p in OLD.glob('*.json')]
@@ -174,7 +187,7 @@ def repair_deliveries(run, doc):
     write(run / 'delivery/manifest_sha256.json', {str(p.relative_to(ROOT)): sha(p) for p in sorted(set(scope))})
     checksums = ROOT.parent / (RUN_ID + '_SHA256SUMS.txt')
     lines = [r['sha256'] + '  ' + Path(r['path']).name for r in receipts.values()]
-    lines += [sha(bundle) + '  ' + bundle.name]
+    lines += [sha(bundle) + '  ' + bundle.name, sha(upstream_bundle) + '  ' + upstream_bundle.name]
     checksums.write_text('\n'.join(lines) + '\n', encoding='utf-8')
     return receipts
 
