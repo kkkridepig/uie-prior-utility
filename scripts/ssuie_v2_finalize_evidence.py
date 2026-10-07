@@ -136,6 +136,19 @@ def repair_deliveries(run, doc):
           'commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=upstream, text=True).strip(),
           'strict_loader_requires_original_git_identity': True, 'independent_backup_verified': False,
           'scope': 'Official public upstream Git history includes author-supplied sample images; no local experiment dataset added. Separate from review/source ZIPs.'})
+    dependencies = []
+    for filename in ['ssuie_local_utility_v1_20261007_metric_weights.zip',
+                     'ssuie_local_utility_v1_20261007_official_resume_ppu_runtime_wheels.zip']:
+        path = ROOT.parent / filename
+        if path.exists():
+            with zipfile.ZipFile(path) as z:
+                if z.testzip() is not None:
+                    raise ValueError('Existing recovery dependency CRC failed: ' + filename)
+            dependencies.append({'path': str(path), 'sha256': sha(path), 'bytes': path.stat().st_size,
+                                 'crc_verified': True, 'existing_v1_archive_read_only': True})
+    write(run / 'delivery/recovery_dependencies.json', {'archives': dependencies,
+          'scope': 'Metric VGG/LPIPS weights and same-vendor PPU extension wheels are separate dependencies, not model contributions.',
+          'independent_backup_verified': False, 'vendor_torch_replacement_allowed': False})
     tracked = subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).decode().split('\0')
     image_or_weight = {'.png', '.jpg', '.jpeg', '.bmp', '.gif', '.webp', '.pth', '.pt', '.zip', '.pdf'}
     source = [ROOT / p for p in tracked if p and (ROOT / p).is_file() and
@@ -146,6 +159,7 @@ def repair_deliveries(run, doc):
                                 'environment.json']]
     source += [p for p in (run / 'delivery').rglob('*.md')]
     source += [run / 'delivery/upstream_git_bundle.json']
+    source += [run / 'delivery/recovery_dependencies.json']
     source += [p for p in upstream.rglob('*') if p.is_file() and '.git' not in p.parts and
                '__pycache__' not in p.parts and p.suffix.lower() not in image_or_weight]
     source += [p for p in OLD.glob('*.json')]
@@ -188,6 +202,7 @@ def repair_deliveries(run, doc):
     checksums = ROOT.parent / (RUN_ID + '_SHA256SUMS.txt')
     lines = [r['sha256'] + '  ' + Path(r['path']).name for r in receipts.values()]
     lines += [sha(bundle) + '  ' + bundle.name, sha(upstream_bundle) + '  ' + upstream_bundle.name]
+    lines += [r['sha256'] + '  ' + Path(r['path']).name for r in dependencies]
     checksums.write_text('\n'.join(lines) + '\n', encoding='utf-8')
     return receipts
 
