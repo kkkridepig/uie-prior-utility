@@ -76,14 +76,21 @@ def identity(s,method,extra=None):
        'source_snapshot':sha(s.run/'source_snapshot.json'),'extra':extra}
 
 
+def candidate_streams():
+    """Exactly the legacy four-stream contract used by both original heads."""
+    return streams(20261007)
+
+
 def train_candidate(s,d,method,total,route,source,sref=None):
     directory=s.run/'checkpoints'/method;directory.mkdir(parents=True,exist_ok=True)
     head='B3' if method.startswith('B3') else 'B1';rgb=head=='B3';losskind='LOG' if method.endswith('_LOG') else 'MSE'
-    rng=streams(20261007);rng['model_data']=streams(20261108)['data']
+    # Original candidate checkpoints contain precisely these four streams.
+    # model_data is utility B4-specific and must not be requested from V1 RNG.
+    rng=candidate_streams()
     model=Candidate().to('cuda:0');opt,sched=optimizer(model,total);source_state=torch.load(source['path'],map_location='cpu')
     extra={'route':route,'source_checkpoint_sha256':source['checkpoint_sha256'],'loss':losskind,'s_ref':sref,
         'source_scheduler_state':source_state['scheduler_state'],'group_sampler':'group_uniform_then_image_uniform_rng_only_no_hidden_state'}
-    ident=identity(s,method,extra);latest=directory/'latest.pt';step=0
+    ident=identity(s,method,extra);latest=directory/'latest.pt';step=0;restored=None
     if latest.exists():restored=resume(latest,model,opt,sched,ident,rng);step=restored['global_step']
     else:
         model.load_state_dict(source_state['model_state'],strict=True);restore_rng(source_state['rng'],rng)
@@ -95,7 +102,16 @@ def train_candidate(s,d,method,total,route,source,sref=None):
         for group in opt.param_groups:group['lr']=1e-5
         points=[4000,6000,8000,10000,12000]
     else:points=[0,1000,2000,4000,8000,12000]
-    sampler=GroupSampler(d.data.role('model_fit'),rng['data']);logs=[]
+    def output_inventory():
+        return [{'checkpoint_id':method+'_%06d'%n,'head':head,'training_step':n,'checkpoint_sha256':sha(directory/('step_%06d.pt'%n)),
+                 'path':str(directory/('step_%06d.pt'%n)),'configuration_id':route+'_'+losskind,'method_id':method} for n in points]
+    if step==total:
+        return output_inventory()
+    previous=restored['extra'] if restored is not None else {}
+    sampler=GroupSampler(d.data.role('model_fit'),rng['data'])
+    logs=previous.get('unfinished_loss_window',[]);gradnorms=previous.get('unfinished_gradient_window',[]);seen=set(previous.get('seen_source_ids',[]))
+    def recoverable_extra():
+        return {**extra,'seen_source_ids':sorted(seen),'unfinished_loss_window':logs,'unfinished_gradient_window':gradnorms}
     predict=read(s.run/'budget_plan.json')['rescue_predicted_seconds']/(2 if route=='LOW_LR_CONTINUATION' else 4)
     with s.device_job('rescue_train_'+method,max(predict*(total-step)/total,60)):
         try:
@@ -110,26 +126,25 @@ def train_candidate(s,d,method,total,route,source,sref=None):
                 if not torch.isfinite(loss) or not torch.isfinite(gn):raise RuntimeError('nonfinite candidate loss/gradient')
                 lr=opt.param_groups[0]['lr'];opt.step()
                 if route!='LOW_LR_CONTINUATION':sched.step()
-                step=update;logs.append(float(loss));s.state['formal_training_updates_v2']=s.state.get('formal_training_updates_v2',0)+1
+                step=update;logs.append(float(loss));gradnorms.append(float(gn));seen.update(ids);s.state['formal_training_updates_v2']=s.state.get('formal_training_updates_v2',0)+1
                 if step%50==0:
                     append(directory/'training.jsonl',{'step':step,'loss_current':float(loss),'last50_mean':float(np.mean(logs)),'last50_min':min(logs),'last50_max':max(logs),
-                         'learning_rate':lr,'gradient_norm':float(gn),'clipped':float(gn)>1,'source_presentations':8*(step-(4000 if route=='LOW_LR_CONTINUATION' else 0)),
-                         'source_ids_current':ids,'source_rng_state_hash':digest(rng['data'].get_state().tolist()),'missing_count':int(missing.sum()),'loss_kind':losskind});logs=[]
+                         'learning_rate':lr,'gradient_norm':float(gn),'clipped':float(gn)>1,'last50_gradient_norm_mean':float(np.mean(gradnorms)),
+                         'last50_gradient_clip_fraction':float(np.mean(np.array(gradnorms)>1)),'source_presentations':8*(step-(4000 if route=='LOW_LR_CONTINUATION' else 0)),
+                         'distinct_sources_cumulative':len(seen),'source_ids_current':ids,'source_rng_state_hash':digest(rng['data'].get_state().tolist()),'missing_count':int(missing.sum()),'loss_kind':losskind});logs=[];gradnorms=[]
                     s.live(global_step=step,current_method=method)
-                if step%250==0:save(latest,model,opt,sched,step,ident,rng,include_cuda=True,extra=extra)
-                if step in points:save(directory/('step_%06d.pt'%step),model,opt,sched,step,ident,rng,include_cuda=True,extra=extra)
-        finally:save(latest,model,opt,sched,step,ident,rng,include_cuda=True,extra=extra)
+                if step%250==0:save(latest,model,opt,sched,step,ident,rng,include_cuda=True,extra=recoverable_extra())
+                if step in points:save(directory/('step_%06d.pt'%step),model,opt,sched,step,ident,rng,include_cuda=True,extra=recoverable_extra())
+        finally:save(latest,model,opt,sched,step,ident,rng,include_cuda=True,extra=recoverable_extra())
     del model,opt,sched
-    return [{'checkpoint_id':method+'_%06d'%n,'head':head,'training_step':n,'checkpoint_sha256':sha(directory/('step_%06d.pt'%n)),
-             'path':str(directory/('step_%06d.pt'%n)),'configuration_id':route+'_'+losskind,'method_id':method} for n in points]
+    return output_inventory()
 
 
 def rescue(s,d):
-    if 'ONE_RESCUE' in s.state['completed']:return
     choice=read(s.run/'selection/rescue_choice.json');route=choice['route'];plan=read(s.run/'budget_plan.json')
     cost=plan['rescue_predicted_seconds']*(2 if route=='LOSS_COMPARISON' else 1)
     remaining=57600-read(s.run/'budget.json')['used_device_seconds']
-    if cost>14400 or cost+plan['full_matrix_training_and_validation_predicted_seconds']+plan['protected_final_seconds']>remaining:
+    if 'ONE_RESCUE' not in s.state['completed'] and (cost>14400 or cost+plan['full_matrix_training_and_validation_predicted_seconds']+plan['protected_final_seconds']>remaining):
         raise Stop('INCONCLUSIVE_BUDGET','唯一救援包（全部匹配臂与诊断）profile预算不足，未运行。')
     if not s.state.get('rescue_budget_active'):
         s.live(rescue_budget_active=True,rescue_budget_start_seconds=read(s.run/'budget.json')['used_device_seconds'])
@@ -143,7 +158,8 @@ def rescue(s,d):
             method=head+'_'+loss if route=='LOSS_COMPARISON' else head+'_LOWLR'
             src=next(i for i in inventory if i['head']==head and i['training_step']==(0 if route=='LOSS_COMPARISON' else 4000))
             new.extend(train_candidate(s,d,method,12000,route,src,sref))
-    inventory+=new;write(s.run/'diagnostics/checkpoint_inventory.json',inventory)
+    from .context import merge_inventory
+    inventory=merge_inventory(inventory,new);write(s.run/'diagnostics/checkpoint_inventory.json',inventory)
     for item in new:
         for role,rows,op in [('model_fit_probe',probe,'probe_diagnostic'),('model_val',d.data.role('model_val'),'model_diagnostic')]:
             d.scan(item,role,rows,op,sensitivity=item['head']=='B1' and role=='model_val')
@@ -230,15 +246,20 @@ def utility_matrix(s,d):
         if method=='B4':
             src=next(i for i in inventory if i['checkpoint_id']==stand['B3']['checkpoint_id']);model.load_state_dict(torch.load(src['path'],map_location='cpu')['model_state'],strict=True)
         latest=directory/'latest.pt';step=0;history=[]
-        if latest.exists():state=resume(latest,model,opt,schedule,ident,rng);step=state['global_step'];history=state['extra']['grid_scores']
-        sampler=GroupSampler(d.data.role('utility_fit'),rng['data']);ms=GroupSampler(d.data.role('model_fit'),rng['model_data']);logs=[];seen=set()
+        saved_extra={}
+        if latest.exists():
+            state=resume(latest,model,opt,schedule,ident,rng);step=state['global_step'];saved_extra=state['extra'];history=saved_extra['grid_scores']
+        sampler=GroupSampler(d.data.role('utility_fit'),rng['data']);ms=GroupSampler(d.data.role('model_fit'),rng['model_data'])
+        logs=saved_extra.get('unfinished_loss_window',[]);gradnorms=saved_extra.get('unfinished_gradient_window',[]);seen=set(saved_extra.get('seen_source_ids',[]))
+        def recoverable_extra():
+            return {'grid_scores':history,'seen_source_ids':sorted(seen),'unfinished_loss_window':logs,'unfinished_gradient_window':gradnorms}
         estimate=plan['full_matrix_training_and_validation_predicted_seconds']/11
         with s.device_job('utility_train_'+method,max(estimate*(3000-step)/3000,60)):
             try:
                 for update in range(step,3001):
                     if update in [0,750,1500,2250,3000] and not any(h['step']==update for h in history):
                         history.extend(checkpoint_grid(s,d,method,model,update,scales))
-                        save(directory/('step_%06d.pt'%update),model,opt,schedule,update,ident,rng,include_cuda=True,extra={'grid_scores':history})
+                        save(directory/('step_%06d.pt'%update),model,opt,schedule,update,ident,rng,include_cuda=True,extra=recoverable_extra())
                     if update==3000:break
                     s.guard();opt.zero_grad(set_to_none=True)
                     if method=='B4':
@@ -255,15 +276,16 @@ def utility_matrix(s,d):
                         loss,parts=pair_objective(model,batch['image'],batch['base'],c,batch['target'],scales)
                     loss.backward();gn=torch.nn.utils.clip_grad_norm_(model.parameters(),1)
                     if not torch.isfinite(loss) or not torch.isfinite(gn):raise RuntimeError('nonfinite utility loss or gradient')
-                    lr=opt.param_groups[0]['lr'];opt.step();schedule.step();step=update+1;logs.append(float(loss));seen.update(ids)
+                    lr=opt.param_groups[0]['lr'];opt.step();schedule.step();step=update+1;logs.append(float(loss));gradnorms.append(float(gn));seen.update(ids)
                     s.state['formal_training_updates_v2']=s.state.get('formal_training_updates_v2',0)+1
                     if step%50==0:
                         append(directory/'training.jsonl',{'step':step,'loss_current':float(loss),'last50_mean':np.mean(logs),'last50_min':min(logs),'last50_max':max(logs),
-                            'learning_rate':lr,'gradient_norm':float(gn),'clipped':float(gn)>1,'source_presentations':step*(8 if method=='B4' else 4),
-                            'view_presentations':step*8,'distinct_sources_in_current_process':len(seen),'source_ids_current':ids});logs=[]
+                            'learning_rate':lr,'gradient_norm':float(gn),'clipped':float(gn)>1,'last50_gradient_norm_mean':float(np.mean(gradnorms)),
+                            'last50_gradient_clip_fraction':float(np.mean(np.array(gradnorms)>1)),'source_presentations':step*(8 if method=='B4' else 4),
+                            'view_presentations':step*8,'distinct_sources_cumulative':len(seen),'source_ids_current':ids});logs=[];gradnorms=[]
                         s.live(current_method=method,global_step=step)
-                    if step%250==0:save(latest,model,opt,schedule,step,ident,rng,include_cuda=True,extra={'grid_scores':history})
-            finally:save(latest,model,opt,schedule,step,ident,rng,include_cuda=True,extra={'grid_scores':history})
+                    if step%250==0:save(latest,model,opt,schedule,step,ident,rng,include_cuda=True,extra=recoverable_extra())
+            finally:save(latest,model,opt,schedule,step,ident,rng,include_cuda=True,extra=recoverable_extra())
         chosen=choose_grid(history);filename='step_%06d.pt'%chosen['step'];rec={'identity':ident,'selected_file':filename,'selected_sha256':sha(directory/filename),'updates':3000,
             'selected_step':chosen['step'],'development_policy_hint':chosen['policy'],'all_grid_scores':history,'selection_role':'utility_val','network_only_frozen':True}
         write(selection_path,rec);allscores.extend(history);del model,opt,schedule

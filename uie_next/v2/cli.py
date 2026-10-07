@@ -68,7 +68,8 @@ def execute(s):
         else:
             snapshot=read(s.run/'source_snapshot.json')
             if any(sha(ROOT/p)!=h for p,h in snapshot.items()):raise Stop('BLOCKED_ENGINEERING','D0冻结源码改变，需要记录影响与重生成受影响配对结果。')
-        s.live(scientific_status='RUNNING')
+        s.state.pop('stop_reason',None)
+        s.live(scientific_status='RUNNING',closeout_complete=False)
         from .backups import stage_backup
         stage_backup(s,'ENGINEERING_ACCEPTANCE')
         from .training import profile_plan
@@ -86,6 +87,7 @@ def execute(s):
     except BudgetStop as exc:s.live(scientific_status='INCONCLUSIVE_BUDGET',stop_reason=str(exc))
     except KeyboardInterrupt:
         s.live(scientific_status='INTERRUPTED_RECOVERABLE',stop_reason='Safe interrupt; committed diagnostic batches and full training checkpoints retained.')
+        return {'state':s.state,'recovery':'Resume the same dispatcher identity; no scientific closeout or new selection.'}
     except BaseException as exc:
         s.live(scientific_status='BLOCKED_ENGINEERING',stop_reason=type(exc).__name__+': '+str(exc))
         s.ctx.text(s.run/'logs/last_exception.log',traceback.format_exc())

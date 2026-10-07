@@ -28,6 +28,17 @@ STAGES=['RECOVERY_AUDIT','ENGINEERING_ACCEPTANCE','D0_MODEL_DIAGNOSTICS','MODEL_
         'NETWORK_FREEZE','CALIBRATION','DEV_GATE','SEALED_ONCE','CLOSEOUT']
 
 
+def merge_inventory(original,existing):
+    """Preserve verified new rescue entries across an audit/resume."""
+    by_id={i['checkpoint_id']:i for i in original}
+    for i in existing:
+        key=i['checkpoint_id']
+        if key in by_id:
+            if by_id[key]!=i:raise ValueError('checkpoint inventory lineage changed '+key)
+        else:by_id[key]=i
+    return list(by_id.values())
+
+
 def config_template():
     reference=ROOT/'configs/uie_next/protocol_v2_reference.json'
     if reference.exists():
@@ -141,7 +152,16 @@ class State:
     def audit(self):
         if sha(self.run/'protocol_source.md')!=PROTOCOL_SHA:raise ValueError('protocol hash mismatch')
         from .diagnostics import inventory
-        checkpoints=inventory();self.ctx.write(self.run/'diagnostics/checkpoint_inventory.json',checkpoints)
+        checkpoints=inventory();inventory_path=self.run/'diagnostics/checkpoint_inventory.json'
+        if inventory_path.exists():
+            checkpoints=merge_inventory(checkpoints,read(inventory_path))
+            for item in checkpoints:
+                parents=Path(item['path']).resolve().parents
+                if (OLD/'checkpoints').resolve() not in parents and (self.run/'checkpoints').resolve() not in parents:
+                    raise ValueError('checkpoint inventory path outside allowed original/new roots')
+                if sha(item['path'])!=item['checkpoint_sha256'] or read(item['path']+'.json')['sha256']!=item['checkpoint_sha256']:
+                    raise ValueError('resume checkpoint inventory hash mismatch')
+        self.ctx.write(inventory_path,checkpoints)
         snapshot=read(OLD/'source_snapshot.json');restored={p:{'expected':h,'actual':sha(ROOT/p)} for p,h in snapshot.items() if p.startswith('uie_next/data/')}
         if any(v['actual']!=v['expected'] for v in restored.values()):raise ValueError('original source identity changed')
         original=read(OLD/'budget.json')

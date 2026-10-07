@@ -132,3 +132,39 @@ def test_shared_stop_exception_for_module_execution():
         raise training.Stop('STOP_NO_USABLE_PRODUCER','finite scientific stop')
     except cli.Stop as exc:
         assert exc.status=='STOP_NO_USABLE_PRODUCER'
+
+
+def test_original_candidate_rng_restores_without_new_utility_stream():
+    from uie_next.checkpoint import restore_rng,rng_state
+    from uie_next.v2.training import candidate_streams
+    original=streams(20261007)
+    rows=[{'sample_id':str(i),'group_id':str(i//2)} for i in range(8)]
+    sampler=GroupSampler(rows,original['data'])
+    sampler.sample(8)
+    state=rng_state(original,include_cuda=False)
+    # Reproduce the former rescue failure: old state has no B4-only model_data.
+    wrong=streams(20261007);wrong['model_data']=streams(20261108)['data']
+    with pytest.raises(KeyError,match='model_data'):restore_rng(state,wrong)
+    restored=candidate_streams();restore_rng(state,restored)
+    assert sampler.sample(8)==GroupSampler(rows,restored['data']).sample(8)
+    assert all(torch.equal(state['streams'][k],restored[k].get_state()) for k in ['init','view','missing_prior'])
+
+
+def test_rescue_inventory_survives_audit_and_rejects_changed_lineage():
+    from uie_next.v2.context import merge_inventory
+    old={'checkpoint_id':'B1_004000','checkpoint_sha256':'a'}
+    new={'checkpoint_id':'B1_LOWLR_006000','checkpoint_sha256':'b'}
+    assert merge_inventory([old],[old,new])==[old,new]
+    with pytest.raises(ValueError):merge_inventory([old],[dict(old,checkpoint_sha256='other')])
+
+
+def test_interrupt_remains_recoverable_without_scientific_closeout(tmp_path,monkeypatch):
+    from types import SimpleNamespace
+    from uie_next.v2.cli import execute
+    import uie_next.v2.delivery as delivery
+    def interrupted():raise KeyboardInterrupt()
+    state=SimpleNamespace(run=tmp_path,state={'scientific_status':'RUNNING'},audit=interrupted)
+    state.live=lambda **kw:state.state.update(kw)
+    called=[];monkeypatch.setattr(delivery,'deliver',lambda s:called.append('unexpected_closeout'))
+    result=execute(state)
+    assert result['state']['scientific_status']=='INTERRUPTED_RECOVERABLE' and not called
