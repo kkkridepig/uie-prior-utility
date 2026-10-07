@@ -1,0 +1,5 @@
+# V2 与V1差异
+
+V1保持STOP_PRIOR_UNUSED。V2将standalone与非零producer分开；8旧非零点先model_val选型，再utility_val检查；最多唯一预定救援。B4也在utility_val只读选网络，所有方法按检查点×部署网格选网络，再在calibration独立重新选参数。组bootstrap增为5000。厂商环境与网络容量未更换。
+
+工程修补：恢复原六文件；显式RunContext/schema2；门控U_hat缺失NA，不改变B1/B3历史结果。D0精确oracle用实际float32输出转CPU float64；同时另报active版本。源码变更不改写旧运行。

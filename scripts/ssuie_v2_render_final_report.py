@@ -92,7 +92,7 @@ def main():
             report+='| %d | %+.6f | %.6f | %.6f |\n'%(r['training_step'],r['endpoint_psnr']-r['baseline_psnr'],r['H32'],r['Hp'])
         report+='\n完整端点在固定训练探针上也下降，不能只凭验证下降把原因归为过拟合；探针不是全训练集、采样目标与图等权PSNR不同，仍不能据此确诊优化原因。本轮未触发新候选续训/损失对照，对更长候选训练或LOG目标是否有效不提供实验结论。\n\n'
     report+='先验响应使用同一检查点、同一输入的六个字段干预，重新计算t/Q/q与候选输出；S只是候选MAE响应，不是效用或因果有益性。B3未安排先验干预，表内NA不能解释成RGB模型能力为零。颜色/对比度先验是弱代理，不是真实深度。训练探针、残差、a/b/U分布和每步配对比较保留在diagnostics。\n\n'
-    report+='候选救援：%s。\n\n'%('未触发：旧model_val已有合格producer；utility_val迁移失败不能再救援或改选。' if rescue is None and producer else json.dumps(rescue,ensure_ascii=False) if rescue else 'not_run：前置资格/预算未解锁，见状态表。')
+    report+='候选救援：%s\n\n'%('未触发：旧model_val已有合格producer；utility_val迁移失败不能再救援或改选。' if rescue is None and producer else json.dumps(rescue,ensure_ascii=False) if rescue else 'not_run：前置资格/预算未解锁，见状态表。')
     report+='## 4. 可部署收益与O机制增量\n\n'
     if gate:
         primary=gate['primary_control'];ablation=gate['primary_mechanism_ablation']
@@ -136,7 +136,7 @@ def main():
     if confirm:
         report+='一次确认结果：'+json.dumps({'passed':confirm['passed'],'checks':confirm['checks']},ensure_ascii=False)+'。未据确认分数修改参数或重选检查点。\n\n'
     else:
-        report+='确认阶段 not_run：完整开发闸门未通过/尚未完成，保留177对本轮封存数据。\n\n'
+        report+='确认阶段 not_run：'+('完整开发闸门已执行但未通过' if gate else '完整开发闸门尚未完成')+'，保留177对本轮封存数据。\n\n'
     report+='## 6. 实际阶段、预算与恢复\n\n'
     report+='| 阶段 | 实际状态 | 原因 |\n|---|---|---|\n'
     for name in STAGES:
