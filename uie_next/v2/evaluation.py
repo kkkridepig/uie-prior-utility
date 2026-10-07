@@ -76,7 +76,7 @@ def build_registry(s):
 
 
 class RegistryRuntime:
-    def __init__(self,d,registry):
+    def __init__(self,d,registry,scales=None):
         self.d=d;self.registry=registry;self.candidates={};self.controllers={}
         for method,r in registry.items():
             if r['candidate']:
@@ -85,7 +85,7 @@ class RegistryRuntime:
             if r['controller']:
                 state=torch.load(r['controller']['path'],map_location='cpu');model=Controller(method);model.load_state_dict(state['model_state'],strict=True)
                 self.controllers[method]=model.to('cuda:0').eval().requires_grad_(False)
-        self.scales=read(d.run/'normalization_stats.json')
+        self.scales=scales if scales is not None else read(d.run/'normalization_stats.json')
     def features(self,image,base,condition='nominal'):
         outputs={};preds={};f=stress_field(image,condition)
         for key,model in self.candidates.items():

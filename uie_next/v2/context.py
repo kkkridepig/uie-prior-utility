@@ -105,6 +105,9 @@ class State:
         if name not in self.state['completed']:self.state['completed'].append(name)
         self.state['stages'][name]={'status':'complete','receipt':receipt}
         append(self.run/'events.jsonl',{'stage':name,'event':'complete','receipt':receipt});self.live()
+        if name in ['D0_MODEL_DIAGNOSTICS','D0_UTILITY_DIAGNOSTICS','ONE_RESCUE','UTILITY_CORE','UTILITY_REMAINING','NETWORK_FREEZE','CALIBRATION']:
+            from .backups import stage_backup
+            stage_backup(self,name)
     @contextlib.contextmanager
     def device_job(self,name,estimate=600,final=False):
         shared=(ROOT/'runs/.ssuie_ppu_device.lock').open('a+')
@@ -119,6 +122,11 @@ class State:
     def guard(self):
         if self.active_budget:
             self.active_budget.guard(10)
+            if self.state.get('rescue_budget_active'):
+                used=read(self.run/'budget.json')['used_device_seconds']
+                if used-self.state['rescue_budget_start_seconds']>=14390:
+                    from ..budget import BudgetStop
+                    raise BudgetStop('single rescue package 4-device-hour limit reached')
             plan=self.run/'budget_plan.json'
             if plan.exists():
                 b=read(self.run/'budget.json')

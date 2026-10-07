@@ -109,3 +109,16 @@ def test_D0_numpy_metric_matches_locked_original():
     torch.manual_seed(16);x=torch.rand(2,3,24,25);y=torch.rand_like(x)
     a=numpy_ssim(x.numpy(),y.numpy());b=ssim(x,y).numpy()
     assert np.max(np.abs(a-b))<1e-12
+
+
+def test_T18_terminal_resume_does_not_dispatch(tmp_path,monkeypatch):
+    from types import SimpleNamespace
+    from uie_next.v2.cli import execute
+    import uie_next.v2.delivery as delivery
+    state=SimpleNamespace(run=tmp_path,state={'scientific_status':'STOP_PRODUCER_TRANSFER_GATE'})
+    calls=[]
+    def done(s):calls.append('closeout');return {'terminal':True}
+    monkeypatch.setattr(delivery,'deliver',done)
+    assert execute(state)=={'terminal':True}
+    assert execute(state)=={'terminal':True}
+    assert calls==['closeout','closeout']

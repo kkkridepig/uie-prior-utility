@@ -131,6 +131,8 @@ def rescue(s,d):
     remaining=57600-read(s.run/'budget.json')['used_device_seconds']
     if cost>14400 or cost+plan['full_matrix_training_and_validation_predicted_seconds']+plan['protected_final_seconds']>remaining:
         raise Stop('INCONCLUSIVE_BUDGET','唯一救援包（全部匹配臂与诊断）profile预算不足，未运行。')
+    if not s.state.get('rescue_budget_active'):
+        s.live(rescue_budget_active=True,rescue_budget_start_seconds=read(s.run/'budget.json')['used_device_seconds'])
     inventory=read(s.run/'diagnostics/checkpoint_inventory.json');probe=d.probe();new=[]
     sref=None
     if route=='LOSS_COMPARISON':
@@ -149,6 +151,7 @@ def rescue(s,d):
     pool=[r for r in mv if r['head']=='B1' and (r['configuration_id'].startswith('LOSS_COMPARISON') if route=='LOSS_COMPARISON' else True)]
     selection=choose_producer(pool);write(s.run/'selection/rescue_producer_selection.json',selection)
     s.complete('ONE_RESCUE',{'route':route,'selection':sha(s.run/'selection/rescue_producer_selection.json')})
+    s.live(rescue_budget_active=False)
     s.complete('RESCUE_MODEL_FREEZE',{'producer':selection['selected']})
     if not selection['selected']:raise Stop('STOP_NO_USABLE_PRODUCER','唯一有限救援后仍无符合model_val资格的非零producer，不追加训练。')
     selected=selection['selected'];item=next(i for i in inventory if i['checkpoint_id']==selected['checkpoint_id']);recipe=selected['configuration_id']

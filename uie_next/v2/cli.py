@@ -64,12 +64,16 @@ def execute(s):
             from .delivery import deliver
             return deliver(s)
         s.audit();d=Diagnostics(s);acceptance(d)
+        from .supplemental_acceptance import accept
+        accept(s,d)
         # Snapshot is the D0 code identity, independent of subsequent NEW files.
         if not (s.run/'source_snapshot.json').exists():s.source_snapshot()
         else:
             snapshot=read(s.run/'source_snapshot.json')
             if any(sha(ROOT/p)!=h for p,h in snapshot.items()):raise Stop('BLOCKED_ENGINEERING','D0冻结源码改变，需要记录影响与重生成受影响配对结果。')
         s.live(scientific_status='RUNNING')
+        from .backups import stage_backup
+        stage_backup(s,'ENGINEERING_ACCEPTANCE')
         from .training import profile_plan
         profile_plan(s,d)
         exists=run_d0(s,d)
