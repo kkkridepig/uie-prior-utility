@@ -137,12 +137,19 @@ def repair_deliveries(run, doc):
                '__pycache__' not in p.parts and p.suffix.lower() not in image_or_weight]
     source += [p for p in OLD.glob('*.json')]
     review = [p for p in list(run.rglob('*')) + list(doc.rglob('*')) if p.is_file() and
-              p.suffix.lower() not in image_or_weight and '/cache/' not in str(p)]
+              p.suffix.lower() not in image_or_weight and '/cache/' not in str(p)
+              and p.name not in {'archive_receipts.json', 'manifest_sha256.json'}
+              and 'package_member_hashes' not in p.parts]
     visuals = [p for p in (run / 'figures').rglob('*') if p.is_file() and p.suffix in {'.png', '.json', '.md'}]
     packages = {'review': review, 'source_protocol': source, 'weights_recovery': weight_files, 'visuals': visuals}
     receipts = {}
     for name, files in packages.items():
-        receipts[name] = archive(ROOT.parent / (RUN_ID + '_' + name + '.zip'), sorted(set(files)), ROOT)
+        files = sorted(set(files))
+        member_manifest = run / 'delivery/package_member_hashes' / (name + '.json')
+        write(member_manifest, {'package': name,
+              'scope': 'Every payload member below; this manifest excludes its own bytes to avoid self-reference. ZIP SHA256 is external.',
+              'members': {str(p.relative_to(ROOT)): sha(p) for p in files}})
+        receipts[name] = archive(ROOT.parent / (RUN_ID + '_' + name + '.zip'), files + [member_manifest], ROOT)
     six = ['__init__.py', 'audit.py', 'cache.py', 'manifest.py', 'roles.py', 'runtime.py']
     snapshot = read(OLD / 'source_snapshot.json')
     six_receipt = {}
@@ -159,6 +166,16 @@ def repair_deliveries(run, doc):
                      'git_bundle': read(run / 'delivery/git_bundle.json'),
                      'package_scope': 'review excludes dataset images/weights/cache; source includes original six data modules, protocol and official public source; recovery includes official and all actual checkpoints plus optimizer/RNG/sampling states and checksum sidecars; visuals separate',
                      'hash_scope': 'ZIP CRC and every included member SHA256; V1 preservation separately verified; no client-side independent-copy claim'})
+    # The external manifest is created AFTER package receipts; exclude itself,
+    # caches, weights and images. Package member manifests cover their own scopes.
+    scope = [p for p in list(run.rglob('*')) + list(doc.rglob('*')) if p.is_file()
+             and p.suffix.lower() not in image_or_weight and '/cache/' not in str(p)
+             and p.name != 'manifest_sha256.json' and not p.name.endswith('.lock')]
+    write(run / 'delivery/manifest_sha256.json', {str(p.relative_to(ROOT)): sha(p) for p in sorted(set(scope))})
+    checksums = ROOT.parent / (RUN_ID + '_SHA256SUMS.txt')
+    lines = [r['sha256'] + '  ' + Path(r['path']).name for r in receipts.values()]
+    lines += [sha(bundle) + '  ' + bundle.name]
+    checksums.write_text('\n'.join(lines) + '\n', encoding='utf-8')
     return receipts
 
 
