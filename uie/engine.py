@@ -198,7 +198,7 @@ def train(cfg):
         if initial["manifest_sha256"] != report["sha256"]:
             raise ValueError("Initialization manifest mismatch; explicit transfer training is not supported")
         if cfg["stage"] == "flow":
-            coarse = {k.removeprefix("coarse."): v for k, v in initial["model"].items() if k.startswith("coarse.")}
+            coarse = {k[len("coarse."):]: v for k, v in initial["model"].items() if k.startswith("coarse.")}
             model.coarse.load_state_dict(coarse, strict=True)
         else:
             if model.spec != initial["model_spec"]:

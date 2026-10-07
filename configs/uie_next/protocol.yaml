@@ -1,0 +1,119 @@
+schema_version: 1
+experiment: ssuie_local_utility_v1
+seed: 20261007
+split_seed: 20261007
+bootstrap_seed: 20261017
+budget:
+  max_device_hours: 16.0
+  final_reserved_device_hours: 3.5
+  max_gpus: 1
+  auto_start_after_preflight: true
+  auto_extra_seeds: false
+  auto_recipe_search: false
+backbone:
+  type: ss_uie_official
+  commit: 88b23a1247d2d92ee7cf8dcad8f3b5079b6a20df
+  checkpoint: /mnt/workspace/uie-prior-utility/downloads/ssuie/SS_UIE_official_public_simplified.pth
+  checkpoint_sha256: 977029a53e095640ca86ea3ca37a1bf2ce976a0d7a143076a4a29fc173ab3a99
+  in_channels: 3
+  channels: 16
+  num_resblock: 4
+  num_memblock: 4
+  height: 256
+  width: 256
+  strict_load: true
+  frozen: true
+  force_eval: true
+  output_policy: select_on_model_val
+data:
+  lsui_root: /mnt/workspace/uie-prior-utility/data/lsui
+  uieb_root: /mnt/workspace/uie-prior-utility/data/uieb
+  manifest: /mnt/workspace/uie-prior-utility/runs/ssuie_local_utility_v1_20261007/roles.jsonl
+  exposure_ledger: /mnt/workspace/uie-prior-utility/runs/ssuie_local_utility_v1_20261007/exposure_ledger.json
+  require_utility_nonoverlap: true
+  unknown_exposure_is_unseen: false
+  utility_group_ratios: [0.50, 0.15, 0.15, 0.20]
+preprocess:
+  size: [256, 256]
+  decoder: opencv
+  interpolation: INTER_LINEAR
+  rgb: true
+  value_range: [0.0, 1.0]
+  augmentation: none
+prior:
+  type: heuristic_optical_proxy_v1
+  blur_kernel: 9
+  padding: replicate
+  rates: [2.4, 1.2, 0.8]
+  transmission_min: 0.05
+  ambient_range: [0.05, 0.95]
+  train_views: [nominal, tau_075, tau_125, ambient_rb_plus, ambient_rb_minus, shift_right_2, shift_left_2]
+candidate:
+  input_channels: 14
+  width: 32
+  blocks: 6
+  residual_block_scale: 0.1
+  max_residual: 0.25
+  zero_init_output: true
+  missing_prior_probability: 0.2
+utility:
+  input_channels: 9
+  width: 32
+  blocks: 4
+  residual_block_scale: 0.1
+  shared_odd_difference: true
+  output_bias: false
+  epsilon_c: 1.0e-6
+  train_tau: 0.0
+  train_lambda: 1.0e-4
+  loss_projection_weight: 1.0
+  loss_pair_weight: 0.25
+  loss_decision_weight: 0.1
+  scale_v_floor: 1.0e-3
+  scale_full_utility_floor: 1.0e-4
+  scale_e2_floor: 1.0e-4
+training:
+  precision: float32
+  amp: false
+  compile: false
+  optimizer: AdamW
+  learning_rate: 1.0e-4
+  final_learning_rate: 1.0e-5
+  weight_decay: 1.0e-4
+  betas: [0.9, 0.999]
+  optimizer_eps: 1.0e-8
+  warmup_fraction: 0.05
+  gradient_clip_norm: 1.0
+  candidate_effective_batch: 8
+  utility_source_batch: 4
+  utility_views_per_source: 2
+  candidate_updates: null
+  utility_updates: null
+  candidate_update_options: [4000, 3000, 2000, 1000]
+  utility_update_options: [3000, 2000, 1500, 1000]
+  checkpoint_fractions: [0.0, 0.25, 0.50, 0.75, 1.0]
+  log_interval: 50
+  resume_checkpoint_interval: 250
+calibration:
+  tau_grid: [0.0, 1.0e-5, 1.0e-4]
+  lambda_grid: [1.0e-6, 1.0e-4, 1.0e-3]
+  gate_temperature_grid: [0.5, 1, 2]
+  gate_margin_grid: [0, 0.25, 0.5]
+  include_return_base: true
+  fixed_alpha_grid: [0, 0.25, 0.5, 0.75, 1]
+gates:
+  candidate_oracle_vs_base_db: 0.15
+  candidate_oracle_vs_fixed_db: 0.05
+  minimum_prior_sensitivity_mae: 1.0e-4
+  method_vs_base_db: 0.10
+  method_vs_primary_control_db: 0.10
+  method_vs_primary_ablation_db: 0.03
+  maximum_ssim_drop: 0.001
+  maximum_lpips_increase: 0.002
+  image_harm_threshold_db: 0.10
+  bootstrap_draws: 2000
+runtime:
+  run_id: ssuie_local_utility_v1_20261007
+  run_dir: /mnt/workspace/uie-prior-utility/runs/ssuie_local_utility_v1_20261007
+  backup_root: null
+  allow_reference_at_inference: false

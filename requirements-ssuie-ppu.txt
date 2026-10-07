@@ -1,0 +1,13 @@
+# Install with --no-deps inside the existing .venv. Keep vendor torch/torchvision.
+setuptools==75.3.2
+packaging==24.2
+wheel==0.45.1
+more-itertools==10.5.0
+gdown==5.2.0
+beautifulsoup4==4.12.3
+soupsieve==2.6
+PySocks==1.7.1
+transformers==4.30.2
+tokenizers==0.13.3
+safetensors==0.4.5
+# Build causal-conv1d==1.1.1 and mamba-ssm==1.1.1 from recorded source commits.

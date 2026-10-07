@@ -1,0 +1,10 @@
+# Python 3.8 recovery supplements. Install with --no-deps in a system-site venv.
+# Core torch, torchvision, NumPy and SciPy remain supplied by the PPU image.
+-r requirements-mpa-ppu.txt
+-r requirements-cde-v3.txt
+Pillow==10.4.0
+scikit-image==0.21.0
+PyWavelets==1.4.1
+imageio==2.35.1
+tifffile==2023.7.10
+lazy_loader==0.4

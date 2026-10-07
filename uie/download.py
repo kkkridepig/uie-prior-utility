@@ -34,7 +34,7 @@ def safe_extract(archive, output):
 
     def destination(name):
         dest = (output / name.replace("\\", "/")).resolve()
-        if not dest.is_relative_to(output):
+        if dest != output and output not in dest.parents:
             raise ValueError(f"Unsafe archive member: {name}")
         return dest
 

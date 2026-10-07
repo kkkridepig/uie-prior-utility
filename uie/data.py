@@ -155,7 +155,7 @@ def audit_manifest(path, verify_hashes=True):
             if key not in row:
                 continue
             file = (root / row[key]).resolve()
-            if not file.is_relative_to(root):
+            if file != root and root not in file.parents:
                 raise ValueError(f"Manifest path escapes data root: {row[key]}")
             if not file.is_file():
                 raise ValueError(f"Missing image: {file}")
@@ -167,7 +167,7 @@ def audit_manifest(path, verify_hashes=True):
                 raise ValueError(f"Pixel leakage across {old}/{split}: {row['id']}")
         if "depth" in row:
             depth_path = (root / row["depth"]).resolve()
-            if not depth_path.is_relative_to(root) or not depth_path.is_file():
+            if (depth_path != root and root not in depth_path.parents) or not depth_path.is_file():
                 raise ValueError(f"Missing or unsafe depth map: {row['depth']}")
             if verify_hashes and sha256_file(depth_path) != row.get("depth_sha256"):
                 raise ValueError(f"Changed depth hash: {depth_path}")
