@@ -46,6 +46,27 @@ def grouped(rows, key_fields):
     return output
 
 
+def summarize_accesses(records):
+    """Keep grouped file-identity audits distinct from per-image model access."""
+    accesses = {}
+    identity_audits = []
+    for row in records:
+        if {'role', 'operation', 'sample_id'} <= set(row):
+            key = (row['role'], row['operation'])
+            entry = accesses.setdefault(key, {'events': 0, 'ids': set()})
+            entry['events'] += 1
+            entry['ids'].add(row['sample_id'])
+        elif (row.get('event') == 'file_identity_only' and
+              row.get('does_not_release_sealed') is True and
+              row.get('operation') ==
+              'SHA256_only_no_decode_for_quality_no_model_forward_no_J0_J1_cache_no_score' and
+              {'roles', 'counts', 'audit_result_sha256', 'per_file_expected_identity_in'} <= set(row)):
+            identity_audits.append(row)
+        else:
+            raise ValueError('Unrecognized access audit event; refusing incomplete export')
+    return accesses, identity_audits
+
+
 def self_check():
     # Unequal content-group sizes: the main average must retain equal image weight.
     rows = [{'role': 'synthetic', 'condition': 'nominal', 'method': 'G1',
@@ -56,8 +77,24 @@ def self_check():
     assert out['psnr'] == 3. and out['n_images'] == 3 and out['n_groups'] == 2
     assert out['U_hat_mse'] is None and out['U_hat_mse_n_provided'] == 0
     assert sum(r['n_images'] for r in grouped(rows, ['group_id'])) == 3
+    guard = {'role': 'utility_val', 'operation': 'develop', 'sample_id': 'fixture'}
+    audit = {'event': 'file_identity_only', 'does_not_release_sealed': True,
+             'operation': 'SHA256_only_no_decode_for_quality_no_model_forward_no_J0_J1_cache_no_score',
+             'roles': ['sealed_eval'], 'counts': {'sealed_eval': 177},
+             'audit_result_sha256': 'fixture', 'per_file_expected_identity_in': 'roles.jsonl'}
+    accesses, audits = summarize_accesses([audit, guard, guard])
+    assert accesses[('utility_val', 'develop')]['events'] == 2
+    assert len(accesses[('utility_val', 'develop')]['ids']) == 1
+    assert audits == [audit] and not any(k[0] == 'sealed_eval' for k in accesses)
+    try:
+        summarize_accesses([{'operation': 'unrecognized'}])
+        raise AssertionError('Malformed access audit accepted')
+    except ValueError:
+        pass
     return {'passed': True, 'fixture_only': True,
-            'unequal_group_sizes_image_weighted': True, 'missing_prediction_remains_null': True}
+            'unequal_group_sizes_image_weighted': True, 'missing_prediction_remains_null': True,
+            'identity_only_event_kept_separate_from_model_access': True,
+            'malformed_audit_rejected': True}
 
 
 def main():
@@ -78,21 +115,19 @@ def main():
     # The intake audit predates calibration. Keep it immutable and separately
     # expose actual guarded runtime accesses instead of relabeling old facts.
     access_path = run / 'access_events.jsonl'
-    accesses = {}
     if access_path.exists():
         with access_path.open(encoding='utf-8') as stream:
-            for line in stream:
-                row = json.loads(line)
-                key = (row['role'], row['operation'])
-                entry = accesses.setdefault(key, {'events': 0, 'ids': set()})
-                entry['events'] += 1
-                entry['ids'].add(row['sample_id'])
+            accesses, identity_audits = summarize_accesses(json.loads(line) for line in stream)
+        for audit in identity_audits:
+            if audit['audit_result_sha256'] != sha(run / 'data_audit.json'):
+                raise ValueError('File-identity audit source changed')
         write(run / 'delivery/data_access_closeout.json', {
             'source_sha256': sha(access_path),
             'counts_are_guard_events_not_unique_forwards': True,
             'intake_data_audit_sha256': sha(run / 'data_audit.json'),
             'intake_audit_not_rewritten_after_scoring': True,
             'sealed_eval_released': state['sealed_eval_released'],
+            'identity_only_audit_events': identity_audits,
             'guarded_accesses': [{'role': role, 'operation': operation,
                                  'events': entry['events'], 'unique_images': len(entry['ids'])}
                                 for (role, operation), entry in sorted(accesses.items())]})
