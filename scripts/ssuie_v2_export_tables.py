@@ -1,0 +1,158 @@
+"""CPU-only faithful exports after closeout, without changing any selection.
+
+JSON remains the scientific record. These CSVs expose every registered method,
+single-seed and content-group results, stress conditions, and actual stage status.
+No dataset image is opened and no missing score is replaced with a number.
+"""
+import argparse
+import csv
+import json
+import math
+import time
+from pathlib import Path
+
+import numpy as np
+
+from uie_next.records import ROOT, read, sha, write, append
+from uie_next.v2.context import RUN_ID, METHOD_ORDER
+from uie_next.v2.diagnostics import csv_write
+
+
+def grouped(rows, key_fields):
+    groups = {}
+    for row in rows:
+        key = tuple(row[field] for field in key_fields)
+        groups.setdefault(key, []).append(row)
+    output = []
+    for key, part in sorted(groups.items()):
+        record = dict(zip(key_fields, key))
+        record.update(seed=20261007, n_images=len(part),
+                      n_groups=len({r['group_id'] for r in part}),
+                      aggregation='image_weighted', group_type='content_group_proxy')
+        for metric in ['mse', 'psnr', 'ssim', 'lpips', 'delta_psnr_db', 'alpha_mean',
+                       'coverage_over_0_05', 'oracle_regret_mse', 'U_hat_mse',
+                       'U_hat_true_correlation']:
+            values = [r[metric] for r in part if r.get(metric) is not None]
+            record[metric] = float(np.mean(values)) if values else None
+            record[metric + '_n_provided'] = len(values)
+            if not values:
+                record[metric + '_status'] = 'not_provided_or_not_applicable_see_per_image'
+        delta = np.asarray([r['delta_psnr_db'] for r in part])
+        record.update(harm_rate=float((delta < -.1).mean()),
+                      improvement_rate=float((delta > .1).mean()),
+                      worst10_delta_psnr=float(np.sort(delta)[:math.ceil(.1*len(delta))].mean()))
+        output.append(record)
+    return output
+
+
+def self_check():
+    # Unequal content-group sizes: the main average must retain equal image weight.
+    rows = [{'role': 'synthetic', 'condition': 'nominal', 'method': 'G1',
+             'sample_id': str(i), 'group_id': ('a' if i < 2 else 'b'),
+             'psnr': v, 'delta_psnr_db': v, 'U_hat_mse': None}
+            for i, v in enumerate([0., 0., 9.])]
+    out = grouped(rows, ['role', 'condition', 'method'])[0]
+    assert out['psnr'] == 3. and out['n_images'] == 3 and out['n_groups'] == 2
+    assert out['U_hat_mse'] is None and out['U_hat_mse_n_provided'] == 0
+    assert sum(r['n_images'] for r in grouped(rows, ['group_id'])) == 3
+    return {'passed': True, 'fixture_only': True,
+            'unequal_group_sizes_image_weighted': True, 'missing_prediction_remains_null': True}
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--self-check', action='store_true')
+    args = parser.parse_args()
+    run = ROOT / 'runs' / RUN_ID
+    if args.self_check:
+        receipt = self_check()
+        write(run / 'tests/table_export_self_check.json', receipt)
+        print(json.dumps(receipt))
+        return
+    state = read(run / 'state.json')
+    if not state.get('closeout_complete') or state['scientific_status'] in ['RUNNING', 'INTERRUPTED_RECOVERABLE']:
+        raise RuntimeError('Scientific dispatcher must stop first')
+    start = time.monotonic()
+    inputs = {}; formal = []; stress = []
+    for path in sorted((run / 'metrics/parts').glob('*.json')):
+        record = read(path)
+        if path.name.endswith('_cal_grid.json'):
+            continue
+        rows = record.get('rows', [])
+        if len(record.get('done', [])) != len({r['sample_id'] for r in rows}):
+            raise ValueError('Incomplete per-image export: ' + str(path))
+        inputs[str(path.relative_to(run))] = sha(path)
+        if rows and rows[0]['condition'] == 'nominal':
+            formal.extend(rows)
+        else:
+            stress.extend(rows)
+    if formal:
+        csv_write(run / 'metrics/method_summary.csv', grouped(formal, ['role', 'condition', 'method']))
+        csv_write(run / 'metrics/per_seed.csv', grouped(formal, ['role', 'condition', 'method']))
+        csv_write(run / 'metrics/per_content_group.csv', grouped(formal, ['role', 'condition', 'method', 'group_id']))
+    if stress:
+        csv_write(run / 'metrics/stress_per_image.csv', stress)
+        csv_write(run / 'metrics/stress_summary.csv', grouped(stress, ['role', 'condition', 'method']))
+        csv_write(run / 'metrics/stress_per_content_group.csv', grouped(stress, ['role', 'condition', 'method', 'group_id']))
+    pairs = []
+    for name in ['development_gate.json', 'confirmation_results.json']:
+        path = run / name
+        if not path.exists():
+            continue
+        gate = read(path); inputs[name] = sha(path)
+        role = 'utility_val' if name.startswith('development') else 'sealed_eval'
+        for method, stats in sorted(gate['paired'].items()):
+            pairs.append({'role': role, 'comparison': 'O-minus-' + method, **stats})
+        # A failed gate was executed; it is not an unrun stage. No frozen policy changes.
+        stage = 'DEV_GATE' if role == 'utility_val' else 'SEALED_ONCE'
+        if not gate['passed'] and state['stages'][stage]['status'] == 'not_run':
+            state['stages'][stage] = {'status': 'executed_failed', 'receipt_sha256': sha(path),
+                                     'reason': '完整判据已执行但未通过；失败不等于not_run。'}
+    if pairs:
+        csv_write(run / 'metrics/O_paired_comparisons.csv', pairs)
+    diagnostic_path = run / 'diagnostics/checkpoint_image_metrics.csv'
+    if diagnostic_path.exists():
+        with diagnostic_path.open(newline='', encoding='utf-8') as f:
+            diagnostic = list(csv.DictReader(f))
+        diag_groups = {}
+        for r in diagnostic:
+            key = tuple(r[k] for k in ['role', 'checkpoint_id', 'prediction_kind', 'group_id'])
+            diag_groups.setdefault(key, []).append(r)
+        diag_out = []
+        for key, part in sorted(diag_groups.items()):
+            rec = dict(zip(['role', 'checkpoint_id', 'prediction_kind', 'group_id'], key))
+            rec.update(seed=20261007, n_images=len(part), aggregation='within_group_image_weighted',
+                       group_type='content_group_proxy')
+            for metric in ['psnr', 'mse', 'ssim', 'delta_psnr_db']:
+                rec[metric] = float(np.mean([float(r[metric]) for r in part]))
+            diag_out.append(rec)
+        csv_write(run / 'diagnostics/checkpoint_per_content_group.csv', diag_out)
+        inputs[str(diagnostic_path.relative_to(run))] = sha(diagnostic_path)
+    # Keep a receipt that distinguishes completed jobs from temporary fixtures.
+    jobs = []
+    for method in METHOD_ORDER:
+        selection = run / 'checkpoints' / method / 'selection.json'
+        records = []
+        log = selection.parent / 'training.jsonl'
+        if log.exists():
+            records = [json.loads(x) for x in log.read_text().splitlines()]
+        jobs.append({'method': method, 'status': 'complete' if selection.exists() else 'not_run_or_incomplete',
+                     'actual_final_logged_update': records[-1]['step'] if records else None,
+                     'source_presentations': records[-1]['source_presentations'] if records else None,
+                     'view_presentations': records[-1]['view_presentations'] if records else None,
+                     'unique_sources': records[-1]['distinct_sources_cumulative'] if records else None,
+                     'loss_last50_mean': records[-1]['last50_mean'] if records else None,
+                     'clip_fraction_last50': records[-1]['last50_gradient_clip_fraction'] if records else None})
+    csv_write(run / 'metrics/training_job_receipts.csv', jobs)
+    write(run / 'state.json', state)
+    append(run / 'events.jsonl', {'event': 'CPU_closeout_exports', 'selection_unchanged': True,
+                                 'sealed_access_added': False, 'stage_status_only_correction': True})
+    write(run / 'delivery/table_export_identity.json', {'script_sha256': sha(__file__),
+          'inputs': inputs, 'CPU_wall_seconds': time.monotonic() - start,
+          'dataset_images_read': False, 'device_work': False, 'selection_unchanged': True,
+          'n_formal_per_image_rows': len(formal), 'n_stress_per_image_rows': len(stress)})
+    print(json.dumps({'formal_rows': len(formal), 'stress_rows': len(stress), 'jobs': len(jobs)}))
+
+
+if __name__ == '__main__':
+    main()
