@@ -129,6 +129,13 @@ def main():
     full=optional(run/'timing/O_full_pipeline.json')
     if full:
         report+='完整O流水线另在独立进程执行底座、先验、producer与共享正负控制器，最终仍使用冻结部署策略；尺度只在计时前读一次。模型p50/p95=%.3f/%.3f ms，service p50=%.3f ms，峰值%.2f MiB。即使所选策略return_base，这份成本也包含完整机制，不能与捷径时延混为一谈。\n\n'%(full['model']['p50']*1000,full['model']['p95']*1000,full['service']['p50']*1000,full['peak_single_process_allocated_bytes']/1024**2)
+    compute=optional(run/'timing/module_compute_costs.json')
+    if compute:
+        report+='外接模块实际参数与256×256、batch1卷积计算量：\n\n'
+        report+='| 模块 | 参数 | 卷积GMAC | 共享方向网络调用数 |\n|---|---:|---:|---:|\n'
+        for r in compute['rows']:
+            report+='| %s | %d | %.6f | %d |\n'%(r['method'],r['parameters'],r['module_convolution_MACs']/1e9,r['shared_network_forward_calls'])
+        report+='\n一个乘加计一个MAC；这是从真实模块结构精确计算的外接卷积成本，不是设备测速。未包括底座、自定义扫描、先验、逐元素操作与I/O；底座MAC未实测，明确缺失。O及保留共享结构的消融每张图调用同一h两次，G2仅近似匹配这部分计算量，参数量和全流程时延仍不同。冻结策略若回退J0，部署捷径不实际执行全部模块。\n\n'
     inspected=optional(run/'figures/agent_visual_inspection.json')
     if inspected:
         report+='面板已实际打开检查的列表与hash见 figures/agent_visual_inspection.json；未列出的图片只完成生成/hash验证，不称逐张人工检查。\n\n'
