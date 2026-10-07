@@ -153,6 +153,7 @@ def main():
         inputs[str(diagnostic_path.relative_to(run))] = sha(diagnostic_path)
     # Keep a receipt that distinguishes completed jobs from temporary fixtures.
     jobs = []
+    defaults = []
     for method in METHOD_ORDER:
         selection = run / 'checkpoints' / method / 'selection.json'
         records = []
@@ -166,7 +167,23 @@ def main():
                      'unique_sources': records[-1]['distinct_sources_cumulative'] if records else None,
                      'loss_last50_mean': records[-1]['last50_mean'] if records else None,
                      'clip_fraction_last50': records[-1]['last50_gradient_clip_fraction'] if records else None})
+        if selection.exists():
+            chosen = read(selection)
+            policy = ({'alpha': 1.0} if method == 'B4' else
+                      {'temperature': 1.0, 'margin': 0.0} if method.startswith('G') else
+                      {'tau': 0.0, 'lamb': 1e-4})
+            matches = [row for row in chosen['all_grid_scores']
+                       if row['step'] == chosen['selected_step'] and row['policy'] == policy]
+            if len(matches) != 1:
+                raise ValueError('Missing or ambiguous frozen-network default-policy score: ' + method)
+            defaults.append({'method': method, 'role': 'utility_val',
+                             'selected_step': chosen['selected_step'],
+                             'selected_sha256': chosen['selected_sha256'],
+                             'record_kind': 'uncalibrated_default_diagnostic_not_final_deployment',
+                             **matches[0]})
     csv_write(run / 'metrics/training_job_receipts.csv', jobs)
+    if defaults:
+        csv_write(run / 'metrics/default_development_policy_scores.csv', defaults)
     write(run / 'state.json', state)
     append(run / 'events.jsonl', {'event': 'CPU_closeout_exports', 'selection_unchanged': True,
                                  'sealed_access_added': False, 'stage_status_only_correction': True})

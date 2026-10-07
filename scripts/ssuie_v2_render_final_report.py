@@ -79,7 +79,7 @@ def main():
     trade=losses.get('B1_004000|model_val')
     if trade:
         report+='旧B1_4000：同图均值MSE相对变化 %.6f%%；ΔMSE=%+.9g，95%%组配对区间[%+.9g,%+.9g]；平均逐图ΔPSNR=%+.6f dB，区间[%+.6f,%+.6f]。\n\n'%(trade['mean_mse_relative_change']*100,trade['mse']['mean_image'],*trade['mse']['ci95'],trade['psnr']['mean_image'],*trade['psnr']['ci95'])
-        report+='这%s预定的“MSE下降至少0.5%%且PSNR下降至少0.02dB”路线条件。平均MSE与平均逐图PSNR权重不同；log-MSE与PSNR是线性换算，不是两份独立证据。均值与探针趋势不能证明已经收敛或一定欠训练。\n\n'%('满足' if trade['mean_mse_relative_change']<=-.005 and trade['psnr']['mean_image']<=-.02 else '不满足')
+        report+='这%s预定的“MSE下降至少0.5%%且PSNR下降至少0.02dB”损失权衡数值条件；救援还必须先满足“旧model_val无合格非零producer”。本轮已有合格producer，因此该数值现象不授权额外损失搜索。平均MSE与平均逐图PSNR权重不同；log-MSE与PSNR是线性换算，不是两份独立证据。均值与探针趋势不能证明已经收敛或一定欠训练。\n\n'%('满足' if trade['mean_mse_relative_change']<=-.005 and trade['psnr']['mean_image']<=-.02 else '不满足')
     report+='先验响应使用同一检查点、同一输入的六个字段干预，重新计算t/Q/q与候选输出；S只是候选MAE响应，不是效用或因果有益性。B3未安排先验干预，表内NA不能解释成RGB模型能力为零。颜色/对比度先验是弱代理，不是真实深度。训练探针、残差、a/b/U分布和每步配对比较保留在diagnostics。\n\n'
     report+='候选救援：%s。\n\n'%('未触发：旧model_val已有合格producer；utility_val迁移失败不能再救援或改选。' if rescue is None and producer else json.dumps(rescue,ensure_ascii=False) if rescue else 'not_run：前置资格/预算未解锁，见状态表。')
     report+='## 4. 可部署收益与O机制增量\n\n'
@@ -98,6 +98,7 @@ def main():
             for m,r in sorted(calibration['methods'].items()):
                 report+='| %s | `%s` |\n'%(m,json.dumps(r['policy'],ensure_ascii=False,sort_keys=True))
             report+='\n全部五检查点×预定网格分数见 utility_checkpoint_grid_scores.csv，CAL完整逐图×网格见 calibration_all_strategy_per_image.csv。选中return_base表示没有该方法的可部署增量，不能称为安全收益成立。\n\n'
+        report+='冻结网络的未校准默认参数结果另存 metrics/default_development_policy_scores.csv，来自同一完整开发网格，不替代CAL部署结果、不构成额外早停门槛。\n\n'
     else:
         report+='正式O、G/R/F门控、B4和消融未获合法解锁/未完整完成，**可部署O收益与特殊机制增量未检验**。不能把oracle空间、临时两更新工程验收或当前科学停止当作正式O训练失败。已完成的SS-UIE/standalone部署时延另报，不是O加速成绩。\n\n'
     report+='本轮没有在匹配RGB非零producer上正式重训O_RGB，因此即便O通过，也不能单凭本轮声称物理先验不可替代；O-NS同时改变奇性约束与幅度输入，不能分别证明二者独立必要。\n\n'
@@ -120,6 +121,7 @@ def main():
         else:report+='| %s | not_run/未完成 | %s |\n'%(m,state.get('stop_reason') or '见阶段表')
     report+='\n累计设备耗时 **%.8f小时 / 16小时**，继承V1 %.8f小时（1503.1731119155884秒，原账本hash保存）；不是新开16小时。旧60秒保守估计保留其身份，新设备活动按占用事件计时，包含真实验收、profile、缓存、重试/中断、训练、评估、视觉和测速；CPU分析另记，不能把缺测CPU耗时填0。最终保护取至少3.5小时与profile更高预测，不重复加总；未花满预算不构成追加训练理由。\n\n'%(budget['used_device_seconds']/3600,budget['inherited_device_seconds']/3600)
     report+='V1保留核验：%s，%d个历史文件hash未变。可恢复checkpoint含模型、AdamW、scheduler、CPU/设备/独立随机流及组采样状态；ZIP补入checksum旁文件与旧谱系，恢复时身份必须一致。时延为无缓存全模型、单方法独立进程、20预热/100计时/20输入service，原始记录和峰值显存分开保存，参见timing/deployment.json。\n\n'%('通过' if legacy['all_unchanged'] else '未通过',legacy['n_files'])
+    report+='日志粒度限制：每50更新的真实loss窗口、样本数和梯度窗口均保留，但training.jsonl行未附独立墙钟时间戳。阶段设备时间来自实际budget_ledger与累计账本；没有事后猜补逐50批耗时。该日志字段缺项不改变输出、标签或选择，但不能声称已测得逐50批速度曲线。\n\n'
     timing=optional(run/'timing/deployment.json')
     if timing:
         report+='| 选定部署策略 | 模型p50(ms) | 模型p95(ms) | 服务p50(ms) | 单进程峰值MiB |\n|---|---:|---:|---:|---:|\n'
