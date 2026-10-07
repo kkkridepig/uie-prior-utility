@@ -1,0 +1,9 @@
+# 数据与暴露审计
+
+原roles.jsonl SHA256=e6176357cbccc2424c268c245ef7e8c3b7dd36c4ef7f2fbbd2fa9b4070b520ce，完整保留，不按计数重划。model_fit3608/model_val671（LSUI，历史上游逐图训练暴露未知）；utility_fit443/utility_val136/CAL133/sealed177（UIEB）以及excluded_overlap1。所有原输入/参考文件哈希核对，跨角色内容代理组无新增交叉；原近重复分组和排除项继承，不称人工核实的场景。
+
+本轮仅对utility_fit/utility_val新增评分/标签/尺度与视觉。utility_fit中按协议哈希固定32组作为D1–D6探针、前8组梯度批次；D7全443图五折，组不跨折，每折标准化/固定强度/尺度只从另4折得到。全量重拟合对象不读DEV目标。
+
+utility_val与CAL有历史评分暴露，旧分析不会因OOF重新划分消失。作者公开简化SS-UIE逐图训练名单未知；不能把未知称未见。CAL本轮不做前向评分/标签，sealed177本轮保持未评分；身份哈希核对不是封存评分。旧合法CAL策略只作D3固定历史策略读取，未据新诊断重校准。
+
+最终访问事件需逐项核对只有utility_fit/utility_val。原参考路径用于合法诊断或训练标签；部署接口仅接收I与冻结模型/配置，不读取参考图、角色、ID或oracle。随机方向/空间置乱种子仅由规定字符串与sample_id产生，与Y无关。
