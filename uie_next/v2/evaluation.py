@@ -13,7 +13,7 @@ from .context import METHOD_ORDER
 from .diagnostics import checkpoint_model,metrics,exact_strategies,csv_write
 from .selection import grid,choose_grid,standalone
 from .statistics import paired_stats
-from .cli import Stop
+from .errors import Stop
 
 
 def apply_policy(method,policy,base,candidate,prediction):

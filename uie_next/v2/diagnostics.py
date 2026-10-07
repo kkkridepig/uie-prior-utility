@@ -127,7 +127,7 @@ class Diagnostics:
     def scan(self,item,role,rows,operation,sensitivity=False):
         directory=self.run/'diagnostics/parts'/item['checkpoint_id'];directory.mkdir(parents=True,exist_ok=True)
         path=directory/(role+'.json');identity={'checkpoint_sha256':item['checkpoint_sha256'],'role_manifest':sha(self.run/'roles.jsonl'),
-             'protocol':PROTOCOL_SHA,'source':sha(self.run/'source_snapshot.json'),'ids':digest([r['sample_id'] for r in rows]),'metric':sha(ROOT/'uie_next/v2/diagnostics.py')}
+             'protocol':PROTOCOL_SHA,'source':self.s.state.get('D0_initial_snapshot_sha256',sha(self.run/'source_snapshot.json')),'ids':digest([r['sample_id'] for r in rows]),'metric':sha(ROOT/'uie_next/v2/diagnostics.py')}
         prior=read(path) if path.exists() else {'identity':identity,'metrics':[],'residuals':[],'sensitivity':[],'done':[],'complete':False}
         if prior['identity']!=identity:raise ValueError('diagnostic pairing identity mismatch')
         if prior['complete']:

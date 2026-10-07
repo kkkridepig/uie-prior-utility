@@ -170,7 +170,10 @@ def deliver(s):
     source=read(s.run/'source_snapshot.json') if (s.run/'source_snapshot.json').exists() else {}
     source_paths=[ROOT/p for p in source]+[s.run/'protocol_source.md',s.run/'protocol_resolved.yaml',s.run/'source_snapshot.json',s.run/'roles.jsonl',s.run/'exposure_ledger.json']
     upstream=ROOT/'third_party/ss_uie'
-    source_paths += [p for p in upstream.rglob('*') if p.is_file() and '.git' not in p.parts and '__pycache__' not in p.parts]
+    source_paths += [p for p in upstream.rglob('*') if p.is_file() and '.git' not in p.parts and '__pycache__' not in p.parts
+        and p.suffix.lower() not in ['.png','.jpg','.jpeg','.bmp','.gif','.pth','.pt','.zip','.pdf']]
+    tracked=subprocess.check_output(['git','ls-files','-z'],cwd=ROOT).decode().split('\0')
+    source_paths += [ROOT/p for p in tracked if p and (ROOT/p).is_file() and Path(p).suffix.lower() not in ['.png','.jpg','.jpeg','.bmp','.gif','.pth','.pt','.zip','.pdf']]
     review=[p for p in s.run.rglob('*') if p.is_file() and p.suffix not in ['.pt','.pth','.png'] and '/cache/' not in str(p)]+[p for p in s.doc.rglob('*') if p.is_file()]
     packages={'review':review,'source_protocol':source_paths,'weights_recovery':[Path(r['path']) for r in weights]+[s.run/'delivery/server_weights.json'],
               'visuals':list((s.run/'figures').rglob('*.png'))+list((s.run/'figures').rglob('*.json'))}

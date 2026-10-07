@@ -122,3 +122,13 @@ def test_T18_terminal_resume_does_not_dispatch(tmp_path,monkeypatch):
     assert execute(state)=={'terminal':True}
     assert execute(state)=={'terminal':True}
     assert calls==['closeout','closeout']
+
+
+def test_shared_stop_exception_for_module_execution():
+    from uie_next.v2.errors import Stop
+    from uie_next.v2 import cli,training,evaluation
+    assert cli.Stop is training.Stop is evaluation.Stop is Stop
+    try:
+        raise training.Stop('STOP_NO_USABLE_PRODUCER','finite scientific stop')
+    except cli.Stop as exc:
+        assert exc.status=='STOP_NO_USABLE_PRODUCER'

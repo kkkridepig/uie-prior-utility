@@ -13,10 +13,7 @@ from .context import State,OLD,STAGES
 from .diagnostics import Diagnostics
 from .acceptance import acceptance
 from .selection import choose_producer,standalone,eligibility,rescue_choice
-
-
-class Stop(RuntimeError):
-    def __init__(self,status,reason):super().__init__(reason);self.status=status
+from .errors import Stop
 
 
 def run_d0(s,d):
@@ -87,6 +84,8 @@ def execute(s):
             evaluate_all(s,d)
     except Stop as exc:s.live(scientific_status=exc.status,stop_reason=str(exc))
     except BudgetStop as exc:s.live(scientific_status='INCONCLUSIVE_BUDGET',stop_reason=str(exc))
+    except KeyboardInterrupt:
+        s.live(scientific_status='INTERRUPTED_RECOVERABLE',stop_reason='Safe interrupt; committed diagnostic batches and full training checkpoints retained.')
     except BaseException as exc:
         s.live(scientific_status='BLOCKED_ENGINEERING',stop_reason=type(exc).__name__+': '+str(exc))
         s.ctx.text(s.run/'logs/last_exception.log',traceback.format_exc())

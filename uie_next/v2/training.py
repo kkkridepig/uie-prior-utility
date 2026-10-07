@@ -17,7 +17,7 @@ from ..math.utility import labels
 from .context import OLD,METHOD_ORDER
 from .diagnostics import checkpoint_model,metrics,exact_strategies,csv_write
 from .selection import eligibility,choose_producer,standalone,grid,choose_grid
-from .cli import Stop
+from .errors import Stop
 
 
 def profile_plan(s,d):
