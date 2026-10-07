@@ -140,6 +140,8 @@ def main():
             report+='| %s | %d | %.6f | %d |\n'%(r['method'],r['parameters'],r['module_convolution_MACs']/1e9,r['shared_network_forward_calls'])
         report+='\n一个乘加计一个MAC；这是从真实模块结构精确计算的外接卷积成本，不是设备测速。未包括底座、自定义扫描、先验、逐元素操作与I/O；底座MAC未实测，明确缺失。O及保留共享结构的消融每张图调用同一h两次，G2仅近似匹配这部分计算量，参数量和全流程时延仍不同。冻结策略若回退J0，部署捷径不实际执行全部模块。\n\n'
     inspected=optional(run/'figures/agent_visual_inspection.json')
+    if (run/'figures/comparison_utility_val_manifest.json').exists():
+        report+='视觉导出修补仅影响案例挑选：原方法面板按O的ΔPSNR排序，保留作辅助失败展示；规约§15要求的候选排序已另生成candidate_ranked_utility_val_selection.json与comparison_utility_val面板，包含同图输入/参考/底座/固定候选/强对照/O及残差、真实/预测U、alpha、误差差图。未更改或重新挑选质量分数、标签、网络或部署策略；正式固定案例以该候选排序清单为准。\n\n'
     if inspected:
         report+='面板已实际打开检查的列表与hash见 figures/agent_visual_inspection.json；未列出的图片只完成生成/hash验证，不称逐张人工检查。\n\n'
     report+='## 7. 下一步与交付\n\n'
