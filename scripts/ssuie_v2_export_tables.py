@@ -90,6 +90,24 @@ def main():
         csv_write(run / 'metrics/method_summary.csv', grouped(formal, ['role', 'condition', 'method']))
         csv_write(run / 'metrics/per_seed.csv', grouped(formal, ['role', 'condition', 'method']))
         csv_write(run / 'metrics/per_content_group.csv', grouped(formal, ['role', 'condition', 'method', 'group_id']))
+        gate_path = run / 'development_gate.json'
+        if gate_path.exists():
+            primary = read(gate_path)['primary_control']
+            dev = [r for r in formal if r['role'] == 'utility_val']
+            control = {r['sample_id']: r for r in dev if r['method'] == primary}
+            ours = sorted([r for r in dev if r['method'] == 'O'],
+                          key=lambda r: (r['delta_psnr_db'], r['sample_id']))
+            text = '# 固定策略失败案例与解释边界\n\n'
+            text += '以下按完整utility_val的O−J0逐图PSNR排序列出最差8例，使用已冻结CAL策略；没有因案例修改检查点、先验或参数。图像面板ID沿规约哈希/最好/最差/中位规则，不以视觉结果筛选。\n\n'
+            text += '| 样本 | 内容代理组 | O−J0(dB) | O−主对照(dB) | alpha均值 | 同候选oracle regret(MSE) |\n|---|---|---:|---:|---:|---:|\n'
+            for row in ours[:8]:
+                ref = control[row['sample_id']]
+                text += '| %s | %s | %+.6f | %+.6f | %.6f | %.9g |\n' % (
+                    row['sample_id'], row['group_id'], row['delta_psnr_db'],
+                    row['psnr']-ref['psnr'], row['alpha_mean'], row['oracle_regret_mse'])
+            text += '\n主对照为 `%s`。regret只比较该方法所属候选融合空间的精确oracle，不能当作可部署收益。真实U和误差差图只用于诊断，不进入推理。小幅alpha或回退不保证平均质量、尾部或机制闸门通过。压力族单独判定，不用压力改善替代名义失败；结论仅限本轮固定配方、单新增模块种子和历史已暴露数据。\n' % primary
+            (run / 'FAILURE_CASES.md').write_text(text, encoding='utf-8')
+            (ROOT / 'docs/experiments' / RUN_ID / 'FAILURE_CASES.md').write_text(text, encoding='utf-8')
     if stress:
         csv_write(run / 'metrics/stress_per_image.csv', stress)
         csv_write(run / 'metrics/stress_summary.csv', grouped(stress, ['role', 'condition', 'method']))
