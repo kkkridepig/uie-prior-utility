@@ -105,6 +105,7 @@ def main():
     report+='## 5. 数据角色、封存和一次确认\n\n'
     report+='| 角色 | 对数 |\n|---|---:|\n'+''.join('| %s | %d |\n'%(k,v) for k,v in audit['role_counts'].items())+'\n'
     report+='LSUI作者训练逐图成员未知；UIEB documented_nonoverlap仅限公开LSUI来源和本地输入/参考交叉近重复审计。内容代理组不是人工确认采集scene。全部历史分析暴露保留，不因新run重新划分消除。本轮177对sealed_eval不是全新盲测。calibration已评分：%s；sealed已解锁：%s。未解锁数据没有候选缓存、质量/视觉评分，身份hash读取另记权限事件。\n\n'%(calibration is not None,state['sealed_eval_released'])
+    report+='data_audit.json记录接管时仅做身份审计的快照；其中“尚未评分”不代表收尾时仍未校准。实际运行守卫访问汇总另存 delivery/data_access_closeout.json，保留原事件来源hash；事件次数含重复守卫检查，不能当独立前向或训练图像数。\n\n'
     if confirm:
         report+='一次确认结果：'+json.dumps({'passed':confirm['passed'],'checks':confirm['checks']},ensure_ascii=False)+'。未据确认分数修改参数或重选检查点。\n\n'
     else:

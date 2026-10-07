@@ -74,6 +74,27 @@ def main():
         raise RuntimeError('Scientific dispatcher must stop first')
     start = time.monotonic()
     inputs = {}; formal = []; stress = []
+    # The intake audit predates calibration. Keep it immutable and separately
+    # expose actual guarded runtime accesses instead of relabeling old facts.
+    access_path = run / 'access_events.jsonl'
+    accesses = {}
+    if access_path.exists():
+        with access_path.open(encoding='utf-8') as stream:
+            for line in stream:
+                row = json.loads(line)
+                key = (row['role'], row['operation'])
+                entry = accesses.setdefault(key, {'events': 0, 'ids': set()})
+                entry['events'] += 1
+                entry['ids'].add(row['sample_id'])
+        write(run / 'delivery/data_access_closeout.json', {
+            'source_sha256': sha(access_path),
+            'counts_are_guard_events_not_unique_forwards': True,
+            'intake_data_audit_sha256': sha(run / 'data_audit.json'),
+            'intake_audit_not_rewritten_after_scoring': True,
+            'sealed_eval_released': state['sealed_eval_released'],
+            'guarded_accesses': [{'role': role, 'operation': operation,
+                                 'events': entry['events'], 'unique_images': len(entry['ids'])}
+                                for (role, operation), entry in sorted(accesses.items())]})
     for path in sorted((run / 'metrics/parts').glob('*.json')):
         record = read(path)
         if path.name.endswith('_cal_grid.json'):

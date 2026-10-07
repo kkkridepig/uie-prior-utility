@@ -95,6 +95,29 @@ def loss_intervals(rows):
 
 def repair_deliveries(run, doc):
     """All official/actual scientific checkpoints AND their verified sidecars."""
+    recovery = run / 'delivery/recovery_instructions.md'
+    marker = '## 下载后的本地完整性核验'
+    recovery_text = recovery.read_text(encoding='utf-8')
+    if marker not in recovery_text:
+        recovery_text += '\n' + marker + '''
+
+优先下载 FINAL_REPORT、NEXT_DECISION、review/source_protocol/weights_recovery/visuals
+四个 ZIP，以及同名 SHA256SUMS.txt 和 scripts/ssuie_v2_verify_downloads.py。
+在本地独立存储目录运行（仅需 Python 标准库，不需要 torch）：
+
+```bash
+python ssuie_v2_verify_downloads.py --directory . --independent-copy --receipt CLIENT_COPY_VERIFICATION.json
+```
+
+脚本验证整包 SHA256、ZIP CRC、每个有效成员哈希、六个原始数据模块与全部冻结
+科学源码。--independent-copy 表示使用者确认副本位于独立存储，脚本本身不能检测
+存储介质是否独立。将客户端回执带回后才能登记已完成异地副本校验；服务器上执行
+该脚本仍只是包完整性核验。当前 independent_backup_verified=false。
+
+恢复还需要原 UIEB/LSUI 图片、上游 Git bundle、度量权重及厂商 PPU 依赖；四个
+ZIP 不包含实验数据图片。Git/依赖 bundle 的哈希另列 SHA256SUMS，请按需要一并下载。
+'''
+        recovery.write_text(recovery_text, encoding='utf-8')
     original = run / 'delivery/archive_receipts.json'
     if original.exists():
         previous = read(original)
@@ -187,7 +210,15 @@ def repair_deliveries(run, doc):
             if actual != snapshot[member]:
                 raise ValueError('Original six-module payload mismatch')
             six_receipt[member] = {'sha256': actual, 'matches_original_v1_snapshot': True}
+        frozen_receipt = {}
+        for member, h in read(run / 'source_snapshot.json').items():
+            actual = hashlib.sha256(z.read(member)).hexdigest()
+            if actual != h:
+                raise ValueError('Frozen source payload mismatch: ' + member)
+            frozen_receipt[member] = actual
     write(run / 'delivery/source_six_modules_package_receipt.json', {'passed': True, 'members': six_receipt})
+    write(run / 'delivery/frozen_source_package_receipt.json', {'passed': True, 'members': frozen_receipt,
+          'frozen_files': len(frozen_receipt), 'source_snapshot_sha256': sha(run / 'source_snapshot.json')})
     write(original, {'packages': receipts, 'independent_backup_verified': False, 'same_server_disk_only': True,
                      'checkpoint_sidecars_included': True, 'six_original_data_modules_verified': True,
                      'git_bundle': read(run / 'delivery/git_bundle.json'),
