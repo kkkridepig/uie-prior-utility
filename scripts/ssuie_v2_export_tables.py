@@ -16,6 +16,7 @@ import numpy as np
 from uie_next.records import ROOT, read, sha, write, append
 from uie_next.v2.context import RUN_ID, METHOD_ORDER
 from uie_next.v2.diagnostics import csv_write
+from uie_next.v2.statistics import paired_stats
 
 
 def grouped(rows, key_fields):
@@ -133,6 +134,20 @@ def main():
         csv_write(run / 'metrics/stress_per_image.csv', stress)
         csv_write(run / 'metrics/stress_summary.csv', grouped(stress, ['role', 'condition', 'method']))
         csv_write(run / 'metrics/stress_per_content_group.csv', grouped(stress, ['role', 'condition', 'method', 'group_id']))
+        stress_pairs = []
+        for role, condition in sorted({(r['role'], r['condition']) for r in stress}):
+            part = [r for r in stress if r['role'] == role and r['condition'] == condition]
+            by = {m: {r['sample_id']: r for r in part if r['method'] == m}
+                  for m in sorted({r['method'] for r in part})}
+            ids = sorted(by['O'])
+            for method, scores in by.items():
+                if set(scores) != set(ids):
+                    raise ValueError('Incomplete stress comparison: ' + method)
+                stats = paired_stats([by['O'][i]['psnr'] - scores[i]['psnr'] for i in ids],
+                                     [by['O'][i]['group_id'] for i in ids])
+                stress_pairs.append({'role': role, 'condition': condition,
+                                     'comparison': 'O-minus-' + method, **stats})
+        csv_write(run / 'metrics/stress_O_paired_comparisons.csv', stress_pairs)
     pairs = []
     for name in ['development_gate.json', 'confirmation_results.json']:
         path = run / name

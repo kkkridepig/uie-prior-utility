@@ -108,6 +108,14 @@ def main():
                 report+='| %s | `%s` |\n'%(m,json.dumps(r['policy'],ensure_ascii=False,sort_keys=True))
             report+='\n全部五检查点×预定网格分数见 utility_checkpoint_grid_scores.csv，CAL完整逐图×网格见 calibration_all_strategy_per_image.csv。选中return_base表示没有该方法的可部署增量，不能称为安全收益成立。\n\n'
         report+='冻结网络的未校准默认参数结果另存 metrics/default_development_policy_scores.csv，来自同一完整开发网格，不替代CAL部署结果、不构成额外早停门槛。\n\n'
+        stress=optional(run/'development_stress.json',[])
+        if stress:
+            report+='四组固定先验压力（策略和网络不再选择）：\n\n'
+            report+='| 压力族 | O−J0(dB) | O−冻结主对照(dB) | O相对J0退化比例 | 预定状态 |\n|---|---:|---:|---:|---|\n'
+            for x in stress:
+                st=x['summary'];o=st['O']
+                report+='| %s | %+.6f | %+.6f | %.6f | %s |\n'%(x['condition'],o['psnr']-st['B0_clip01']['psnr'],o['psnr']-st[primary]['psnr'],o['paired_vs_base']['harm_rate'],x['status'])
+            report+='\n压力未触及失败线也不是普遍鲁棒性证明，更不替代名义增量与机制闸门。各族全部方法的逐图/逐内容组指标、同候选regret和配对区间见metrics/stress_*；门控没有预测U的字段保持null。\n\n'
     else:
         report+='正式O、G/R/F门控、B4和消融未获合法解锁/未完整完成，**可部署O收益与特殊机制增量未检验**。不能把oracle空间、临时两更新工程验收或当前科学停止当作正式O训练失败。已完成的SS-UIE/standalone部署时延另报，不是O加速成绩。\n\n'
     report+='本轮没有在匹配RGB非零producer上正式重训O_RGB，因此即便O通过，也不能单凭本轮声称物理先验不可替代；O-NS同时改变奇性约束与幅度输入，不能分别证明二者独立必要。\n\n'
