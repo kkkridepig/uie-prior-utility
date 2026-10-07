@@ -186,6 +186,8 @@ ZIP 不包含实验数据图片。Git/依赖 bundle 的哈希另列 SHA256SUMS�
     source += [p for p in upstream.rglob('*') if p.is_file() and '.git' not in p.parts and
                '__pycache__' not in p.parts and p.suffix.lower() not in image_or_weight]
     source += [p for p in OLD.glob('*.json')]
+    source += [OLD / n for n in ['protocol_source.md', 'protocol_source_v1_1.md',
+                                 'protocol_resolved.yaml'] if (OLD / n).exists()]
     review = [p for p in list(run.rglob('*')) + list(doc.rglob('*')) if p.is_file() and
               p.suffix.lower() not in image_or_weight and '/cache/' not in str(p)
               and p.name not in {'archive_receipts.json', 'manifest_sha256.json'}
